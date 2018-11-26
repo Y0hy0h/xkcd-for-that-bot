@@ -4,7 +4,6 @@
   "description": "Telegram bot for searching for revelant xkcd comics inline.",
   "dependencies": {
     "elm": "^0.19.0",
-    "elmegram.js": "Elmegram/elmegram.js#e376f7ab6cc9b5ccbb40c32b38141776b4d0cae7",
     "express": "^4.16.4"
   },
   "scripts": {
