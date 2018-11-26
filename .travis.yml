@@ -29,7 +29,7 @@ cache:
 script:
   - yarn run elm-test
 
-stages:
-  - name: after_success
+jobs:
+  include:
     if: branch = master
-    - yarn sync-glitch
+    script: yarn sync-glitch
