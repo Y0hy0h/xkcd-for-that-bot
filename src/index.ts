@@ -22,8 +22,7 @@ async function startServer(app: Express) {
 function getWebhookUrl(token: string): string {
   const domain = process.env.PROJECT_DOMAIN
   const host = `${domain}.glitch.me`
-  const port = 8443
-  return `${host}:${port}/bot/${token}`;
+  return `${host}/bot/${token}`;
 }
 
 export async function setup() {
