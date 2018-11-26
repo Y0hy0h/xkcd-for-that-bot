@@ -1,12 +1,12 @@
-import * as Express from 'express';
-import * as path from 'path';
-import * as bodyParser from 'body-parser';
+import Express from 'express';
+import path from 'path';
+import bodyParser from 'body-parser';
 import { setupBot, startPolling, setupWebhook } from './elmegram.js';
-const Bot = require('./bot.js')
+const Bot = require('./bot.js');
 
 startServer(Express())
 
-async function startServer(app: Express) {
+async function startServer(app: Express.Express) {
   app.use(bodyParser.json());
 
   // Static website
@@ -30,7 +30,11 @@ async function startServer(app: Express) {
   }
 
   const listener = app.listen(process.env.PORT, function () {
-    console.log('Your app is listening on port ' + listener.address().port)
+    let address = listener.address();
+    if (typeof address != 'string') {
+      address = address.address + ":" + address.port;
+    }
+    console.log('Your app is listening at ' + address)
   })
 }
 
@@ -40,7 +44,7 @@ function getWebhookUrl(token: string): string {
   return `${host}/bot/${token}`;
 }
 
-export function getToken(): string {
+export function getToken(): string | undefined {
   const tokenName = 'TELEGRAM_TOKEN';
   const unverifiedToken = process.env[tokenName];
   return unverifiedToken;
