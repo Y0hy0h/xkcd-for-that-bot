@@ -314,7 +314,7 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
                                     )
                         )
                     |> Task.onError
-                        (\_ -> fetchLatest)
+                        (\_ -> fetchRelevantXkcds (max 0 amount) query)
 
             Nothing ->
                 fetchRelevantXkcds amount query
