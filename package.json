@@ -14,7 +14,7 @@
     "build:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
     "postinstall": "npm run build",
     "start": "ts-node ./src/index.ts",
-    "start:dev": "npm run build:dev && npm run start",
+    "start:dev": "npm run build:dev && cross-env NODE_ENV=dev npm run start",
     "start:prod": "npm run build && npm run start"
   },
   "repository": {
@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^10.12.10",
+    "cross-env": "^5.2.0",
     "ts-node": "^7.0.1",
     "typescript": "^3.1.6"
   }
