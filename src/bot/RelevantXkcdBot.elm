@@ -303,7 +303,7 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
                 RelevantXkcd.fetchXkcd id
                     |> Task.andThen
                         (\exactMatch ->
-                            RelevantXkcd.fetchLatestXkcds { amount = max 0 (amount - 1), offset = offset }
+                            fetchRelevantXkcds (max 0 (amount - 1)) query
                                 |> Task.map
                                     (\xkcds ->
                                         let
@@ -317,9 +317,14 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
                         (\_ -> fetchLatest)
 
             Nothing ->
-                RelevantXkcd.fetchRelevantIds query
-                    |> Task.andThen RelevantXkcd.fetchXkcds
-                    |> Task.map (List.take amount)
+                fetchRelevantXkcds amount query
+
+
+fetchRelevantXkcds : Int -> String -> Task String (List RelevantXkcd.Xkcd)
+fetchRelevantXkcds amount query =
+    RelevantXkcd.fetchRelevantIds query
+        |> Task.andThen RelevantXkcd.fetchXkcds
+        |> Task.map (List.take amount)
 
 
 
