@@ -13,7 +13,6 @@ async function startServer(app: Express) {
   app.use(Express.static(path.join(__dirname, '/public/')))
 
   const unverifiedToken = getToken();
-  console.log(process.env.NODE_ENV)
   if (process.env.NODE_ENV && process.env.NODE_ENV == 'dev') {
     console.log('Development mode, starting to poll.')
     startPolling(unverifiedToken, Bot);
