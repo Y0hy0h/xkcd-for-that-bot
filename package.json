@@ -9,7 +9,7 @@
     "xhr2": "^0.1.4"
   },
   "scripts": {
-    "build": "npm run build:dev --optimize",
+    "build": "npm run build:dev -- --optimize",
     "build:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
     "postinstall": "npm run build",
     "start": "ts-node ./src/index.ts",
