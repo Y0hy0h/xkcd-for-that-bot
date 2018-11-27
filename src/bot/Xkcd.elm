@@ -1,20 +1,21 @@
 module Xkcd exposing
-    ( Xkcd
-    , XkcdId
-    , decodeXkcd
-    , fetchCurrentXkcd
-    , fetchLatestXkcds
-    , fetchRelevantIds
-    , fetchXkcd
-    , fetchXkcds
-    , getComicUrl
-    , getExplainUrl
-    , getId
-    , getMouseOver
-    , getPreviewUrl
-    , getTitle
-    , getTranscript
+    ( Xkcd, XkcdId, getId, getPreviewUrl, getTitle, getMouseOver, getTranscript, getComicUrl, getExplainUrl, decodeXkcd
+    , fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcds, fetchRelevantIds
     )
+
+{-| Fetch xkcds by id or relevance to a query.
+
+
+## Xkcd
+
+@docs Xkcd, XkcdId, getId, getPreviewUrl, getTitle, getMouseOver, getTranscript, getComicUrl, getExplainUrl, decodeXkcd
+
+
+## Fetching Xkcds
+
+@docs fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcds, fetchRelevantIds
+
+-}
 
 import Http
 import Json.Decode as Decode
@@ -27,6 +28,8 @@ import Url.Builder
 -- XKCD
 
 
+{-| Container for all information about an xkcd.
+-}
 type Xkcd
     = Xkcd XkcdContent
 
@@ -40,31 +43,46 @@ type alias XkcdContent =
     }
 
 
+{-| The official id.
+-}
 getId : Xkcd -> Int
 getId (Xkcd xkcd) =
     xkcd.id
 
 
+{-| The url of the image preview for the xkcd.
+-}
 getPreviewUrl : Xkcd -> Url
 getPreviewUrl (Xkcd xkcd) =
     xkcd.previewUrl
 
 
+{-| The xkcd's title.
+
+The unsafe version.
+
+-}
 getTitle : Xkcd -> String
 getTitle (Xkcd xkcd) =
     xkcd.title
 
 
+{-| The alt text that appears when hovering with the mouse over the xkcd.
+-}
 getMouseOver : Xkcd -> String
 getMouseOver (Xkcd xkcd) =
     xkcd.mouseOver
 
 
+{-| The official transcript of the xkcd.
+-}
 getTranscript : Xkcd -> Maybe String
 getTranscript (Xkcd xkcd) =
     xkcd.transcript
 
 
+{-| The url to the official site for the comic.
+-}
 getComicUrl : Xkcd -> Url
 getComicUrl (Xkcd xkcd) =
     { protocol = Url.Https
@@ -76,6 +94,8 @@ getComicUrl (Xkcd xkcd) =
     }
 
 
+{-| The url to the explanation for the comic.
+-}
 getExplainUrl : Xkcd -> Url
 getExplainUrl (Xkcd xkcd) =
     { protocol = Url.Https
@@ -283,9 +303,9 @@ decodeXkcd =
                 |> Decode.map
                     (\transcript ->
                         if String.isEmpty transcript then
-                            Nothing
+                        Nothing
 
-                        else
+                    else
                             Just transcript
                     )
     in
