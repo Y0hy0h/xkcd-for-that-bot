@@ -1,8 +1,8 @@
-# XKCD For That Bot
+# xkcd for that bot
 
 [![Telegram @xkcdForThatBot](https://img.shields.io/badge/Telegram-%40xkcdForThatBot-blue.svg)](https://t.me/xkcdForThatBot)
 
-Now there's an XKCD-For-That-Bot! It helps you find [relevant xkcd] comics in Telegram.
+There's a relevant xkcd-for-that-bot! It helps you find [relevant xkcd] comics in Telegram.
 
 The bot is available as [`@xkcdForThatBot`](https://t.me/xkcdForThatBot).
 
