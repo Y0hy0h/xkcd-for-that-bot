@@ -43,6 +43,12 @@ type alias XkcdContent =
     }
 
 
+{-| An Xkcd's id.
+-}
+type alias XkcdId =
+    Int
+
+
 {-| The official id.
 -}
 getId : Xkcd -> Int
@@ -115,82 +121,47 @@ getExplainUrl (Xkcd xkcd) =
     }
 
 
-
--- METHODS
-
-
-fetchRelevantIds : String -> Task String (List XkcdId)
-fetchRelevantIds query =
-    Http.task
-        { method = "GET"
-        , headers = []
-        , url = Url.toString (queryUrl query)
-        , body = Http.emptyBody
-        , resolver =
-            Http.stringResolver
-                (\response ->
-                    case response of
-                        Http.GoodStatus_ _ body ->
-                            parseResponse body
-
-                        _ ->
-                            Err "Error fetching xkcd."
-                )
-        , timeout = Nothing
-        }
-
-
-parseResponse : String -> Result String (List XkcdId)
-parseResponse body =
+{-| Decodes the JSON returned by the official xkcd site.
+-}
+decodeXkcd : Decode.Decoder Xkcd
+decodeXkcd =
     let
-        dropFromEnd amount list =
-            List.take (List.length list - amount) list
+        decodeUrl =
+            Decode.string
+                |> Decode.andThen
+                    (\urlString ->
+                        case Url.fromString urlString of
+                            Just url ->
+                                Decode.succeed url
+
+                            Nothing ->
+                                Decode.fail ("Invalid url '" ++ urlString ++ "'.")
+                    )
+
+        -- Transcripts are broken for xkcds after #1608. See https://www.explainxkcd.com/wiki/index.php/Transcript_on_xkcd for details.
+        sanitizeTranscript xkcdContent =
+            { xkcdContent
+                | transcript =
+                    if xkcdContent.id > 1608 then
+                        Nothing
+
+                    else
+                        xkcdContent.transcript
+            }
     in
-    String.lines body
-        -- The first two entries are statistics.
-        |> List.drop 2
-        |> dropFromEnd 1
-        |> List.map parseXkcdId
-        |> List.foldl
-            (\result list ->
-                Result.map2 (\xkcd existing -> existing ++ [ xkcd ]) result list
-            )
-            (Ok [])
+    Decode.map5
+        XkcdContent
+        (Decode.field "num" Decode.int)
+        (Decode.field "img" decodeUrl)
+        (Decode.field "title" Decode.string)
+        (Decode.field "alt" Decode.string)
+        (Decode.field "transcript" (Decode.string |> Decode.map Just))
+        |> Decode.map sanitizeTranscript
+        |> Decode.map Xkcd
 
 
-type alias XkcdId =
-    Int
 
-
-parseXkcdId : String -> Result String XkcdId
-parseXkcdId line =
-    case String.words line of
-        idString :: urlString :: [] ->
-            case String.toInt idString of
-                Just id ->
-                    Ok id
-
-                _ ->
-                    Err "Malformed line. Could not convert id."
-
-        malformed ->
-            Err <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ "."
-
-
-queryUrl : String -> Url
-queryUrl query =
-    { protocol = Url.Https
-    , host = "relevantxkcd.appspot.com"
-    , port_ = Nothing
-    , path = "/process"
-    , query = Just ("action=xkcd&query=" ++ query)
-    , fragment = Nothing
-    }
-
-
-fetchXkcds : List XkcdId -> Task String (List Xkcd)
-fetchXkcds ids =
-    Task.sequence (List.map fetchXkcd ids)
+-- FETCHING
 
 
 fetchXkcd : XkcdId -> Task String Xkcd
@@ -236,6 +207,11 @@ xkcdInfoUrl id =
     }
 
 
+fetchXkcds : List XkcdId -> Task String (List Xkcd)
+fetchXkcds ids =
+    Task.sequence (List.map fetchXkcd ids)
+
+
 fetchCurrentXkcd : Task String Xkcd
 fetchCurrentXkcd =
     Http.task
@@ -255,6 +231,17 @@ fetchCurrentXkcd =
                 )
         , timeout = Nothing
         }
+
+
+currentXkcdInfoUrl : Url
+currentXkcdInfoUrl =
+    { protocol = Url.Https
+    , host = "xkcd.com"
+    , port_ = Nothing
+    , path = "/info.0.json"
+    , query = Nothing
+    , fragment = Nothing
+    }
 
 
 fetchLatestXkcdIds : { amount : Int, offset : Int } -> Task String (List XkcdId)
@@ -277,57 +264,74 @@ fetchLatestXkcdIds { amount, offset } =
             )
 
 
+fetchRelevantIds : String -> Task String (List XkcdId)
+fetchRelevantIds query =
+    Http.task
+        { method = "GET"
+        , headers = []
+        , url = Url.toString (queryUrl query)
+        , body = Http.emptyBody
+        , resolver =
+            Http.stringResolver
+                (\response ->
+                    case response of
+                        Http.GoodStatus_ _ body ->
+                            parseResponse body
+
+                        _ ->
+                            Err "Error fetching xkcd."
+                )
+        , timeout = Nothing
+        }
+
+
+queryUrl : String -> Url
+queryUrl query =
+    { protocol = Url.Https
+    , host = "relevantxkcd.appspot.com"
+    , port_ = Nothing
+    , path = "/process"
+    , query = Just ("action=xkcd&query=" ++ query)
+    , fragment = Nothing
+    }
+
+
+parseResponse : String -> Result String (List XkcdId)
+parseResponse body =
+    let
+        dropFromEnd amount list =
+            List.take (List.length list - amount) list
+    in
+    String.lines body
+        -- The first two entries are statistics.
+        |> List.drop 2
+        |> dropFromEnd 1
+        |> List.map parseXkcdId
+        |> List.foldl
+            (\result list ->
+                Result.map2 (\xkcd existing -> existing ++ [ xkcd ]) result list
+            )
+            (Ok [])
+
+
+parseXkcdId : String -> Result String XkcdId
+parseXkcdId line =
+    case String.words line of
+        idString :: urlString :: [] ->
+            case String.toInt idString of
+                Just id ->
+                    Ok id
+
+                _ ->
+                    Err "Malformed line. Could not convert id."
+
+        malformed ->
+            Err <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ "."
+
+
 parseXkcd : String -> Result String Xkcd
 parseXkcd raw =
     Decode.decodeString
         decodeXkcd
         raw
         |> Result.mapError Decode.errorToString
-
-
-decodeXkcd : Decode.Decoder Xkcd
-decodeXkcd =
-    let
-        decodeUrl =
-            Decode.string
-                |> Decode.andThen
-                    (\urlString ->
-                        case Url.fromString urlString of
-                            Just url ->
-                                Decode.succeed url
-
-                            Nothing ->
-                                Decode.fail ("Invalid url '" ++ urlString ++ "'.")
-                    )
-
-        -- Transcripts are broken for xkcds after #1608. See https://www.explainxkcd.com/wiki/index.php/Transcript_on_xkcd for details.
-        sanitizeTranscript xkcdContent =
-            { xkcdContent
-                | transcript =
-                    if xkcdContent.id > 1608 then
-                        Nothing
-
-                    else
-                        xkcdContent.transcript
-            }
-    in
-    Decode.map5
-        XkcdContent
-        (Decode.field "num" Decode.int)
-        (Decode.field "img" decodeUrl)
-        (Decode.field "title" Decode.string)
-        (Decode.field "alt" Decode.string)
-        (Decode.field "transcript" (Decode.string |> Decode.map Just))
-        |> Decode.map sanitizeTranscript
-        |> Decode.map Xkcd
-
-
-currentXkcdInfoUrl : Url
-currentXkcdInfoUrl =
-    { protocol = Url.Https
-    , host = "xkcd.com"
-    , port_ = Nothing
-    , path = "/info.0.json"
-    , query = Nothing
-    , fragment = Nothing
-    }
