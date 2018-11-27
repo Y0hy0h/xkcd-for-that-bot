@@ -164,6 +164,8 @@ decodeXkcd =
 -- FETCHING
 
 
+{-| Fetch the xkcd corresponding to the id over HTTP.
+-}
 fetchXkcd : XkcdId -> Task String Xkcd
 fetchXkcd id =
     Http.task
@@ -207,6 +209,8 @@ xkcdInfoUrl id =
     }
 
 
+{-| Convenience function that fetches all corresponding xkcds over HTTP.
+-}
 fetchXkcds : List XkcdId -> Task String (List Xkcd)
 fetchXkcds ids =
     Task.sequence (List.map fetchXkcd ids)
@@ -244,26 +248,45 @@ currentXkcdInfoUrl =
     }
 
 
+{-| Fetches a list of the latest xkds over HTTP.
+
+The resulting list has at most `amount` many entries, and is ordered by decreasing ids (latest to oldest).
+The latest xkcd in the list will be `offset` older than the current xkcd.
+
+`amount` and `offset` are supposed to be non-negative. Negative inputs will be normalized to 0.
+
+-}
 fetchLatestXkcdIds : { amount : Int, offset : Int } -> Task String (List XkcdId)
 fetchLatestXkcdIds { amount, offset } =
     fetchCurrentXkcd
         |> Task.map
             (\currentXkcd ->
                 let
+                    sanitizedOffset =
+                        max 0 offset
+
+                    sanitizedAmount =
+                        max 0 amount
+
                     latestId =
                         getId currentXkcd
 
                     maxId =
-                        latestId - offset
+                        latestId - sanitizedOffset
 
                     minId =
-                        max 0 (maxId - amount)
+                        max 0 (maxId - sanitizedAmount)
                 in
                 List.range minId maxId
                     |> List.reverse
             )
 
 
+{-| Fetches the most relevant xkds' ids for the query over HTTP.
+
+Relevance is according to <https://relevantxkcd.appspot.com/>.
+
+-}
 fetchRelevantIds : String -> Task String (List XkcdId)
 fetchRelevantIds query =
     Http.task
@@ -301,11 +324,15 @@ parseResponse body =
     let
         dropFromEnd amount list =
             List.take (List.length list - amount) list
+
+        sanitizeBody =
+            -- The first two entries are statistics.
+            List.drop 2
+                -- The last line is a newline.
+                >> dropFromEnd 1
     in
     String.lines body
-        -- The first two entries are statistics.
-        |> List.drop 2
-        |> dropFromEnd 1
+        |> sanitizeBody
         |> List.map parseXkcdId
         |> List.foldl
             (\result list ->
