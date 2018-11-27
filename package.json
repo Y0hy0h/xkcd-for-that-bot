@@ -14,8 +14,9 @@
     "build:dev": "npm run clean:build && npm run build:elm:dev && tsc",
     "build:elm:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
     "build:elm:prod": "npm run build:elm:dev -- --optimize",
+    "clean:cache": "rimraf elm-stuff/",
     "clean:build": "rimraf dist/",
-    "postinstall": "npm run build:prod",
+    "postinstall": "npm run clean:cache && npm run build:prod",
     "start": "node ./dist/index.js",
     "start:dev": "npm run build:dev && cross-env NODE_ENV=dev npm run start",
     "start:prod": "npm run build:prod && npm run start"
