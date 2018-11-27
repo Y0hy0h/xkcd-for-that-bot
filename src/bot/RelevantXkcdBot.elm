@@ -147,13 +147,8 @@ update msg model =
                     { incompleteInlineQueryAnswer
                         | next_offset = Just newOffset
                     }
-
-                debugInlineQuery =
-                    { rawInlineQueryAnswer
-                        | cache_time = Just 0
-                    }
             in
-            simply [ debugInlineQuery |> Elmegram.methodFromInlineQuery ] model
+            simply [ rawInlineQueryAnswer |> Elmegram.methodFromInlineQuery ] model
 
         AnswerCallback to xkcd ->
             let
