@@ -1,6 +1,6 @@
 module Xkcd exposing
     ( Xkcd, XkcdId, getId, getPreviewUrl, getTitle, getMouseOver, getTranscript, getComicUrl, getExplainUrl, decodeXkcd
-    , fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcds, fetchRelevantIds
+    , fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds
     )
 
 {-| Fetch xkcds by id or relevance to a query.
@@ -13,7 +13,7 @@ module Xkcd exposing
 
 ## Fetching Xkcds
 
-@docs fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcds, fetchRelevantIds
+@docs fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds
 
 -}
 
@@ -249,10 +249,10 @@ fetchCurrentXkcd =
         }
 
 
-fetchLatestXkcds : { amount : Int, offset : Int } -> Task String (List Xkcd)
-fetchLatestXkcds { amount, offset } =
+fetchLatestXkcdIds : { amount : Int, offset : Int } -> Task String (List XkcdId)
+fetchLatestXkcdIds { amount, offset } =
     fetchCurrentXkcd
-        |> Task.andThen
+        |> Task.map
             (\currentXkcd ->
                 let
                     latestId =
@@ -266,12 +266,6 @@ fetchLatestXkcds { amount, offset } =
                 in
                 List.range minId maxId
                     |> List.reverse
-                    |> List.map fetchXkcd
-                    |> Task.sequence
-                    |> Task.map
-                        (\xkcds ->
-                            xkcds
-                        )
             )
 
 

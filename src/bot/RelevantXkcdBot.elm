@@ -3,11 +3,11 @@ module RelevantXkcdBot exposing (Model, Msg, handle, init, update)
 import Elmegram
 import Http
 import Json.Decode as Decode
-import Xkcd
 import String.Extra as String
 import Task exposing (Task)
 import Telegram
 import Url
+import Xkcd
 
 
 type alias Response =
@@ -287,7 +287,8 @@ fetchRelevantXkcdsForQuery : String -> { amount : Int, offset : Int } -> Task St
 fetchRelevantXkcdsForQuery query { amount, offset } =
     let
         fetchLatest =
-            Xkcd.fetchLatestXkcds { amount = max 0 amount, offset = offset }
+            Xkcd.fetchLatestXkcdIds { amount = max 0 amount, offset = offset }
+                |> Task.andThen Xkcd.fetchXkcds
     in
     if String.isEmpty query then
         fetchLatest
