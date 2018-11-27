@@ -1,7 +1,7 @@
 import Express from 'express';
 import path from 'path';
 import bodyParser from 'body-parser';
-import { setupBot, startPolling, setupWebhook } from './elmegram.js';
+import { setupBot, startPolling, setupWebhook } from '../packages/elmegram.js';
 const Bot = require('./bot.js');
 
 startServer(Express())
