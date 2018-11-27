@@ -48,5 +48,9 @@ function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } 
 export function getToken(): string | undefined {
   const tokenName = 'TELEGRAM_TOKEN';
   const unverifiedToken = process.env[tokenName];
+  if (typeof unverifiedToken == 'undefined') {
+    console.error(`The environment variable ${tokenName} is not set. Please provide the Telegram token using it.`);
+    throw new Error('Telegram token env var not set.')
+  }
   return unverifiedToken;
 }
