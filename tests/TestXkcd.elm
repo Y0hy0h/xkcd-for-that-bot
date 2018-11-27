@@ -58,6 +58,37 @@ suite =
                                 Err err ->
                                     Expect.fail (Decode.errorToString err)
                        )
+        , fuzz int "sanitizes transcript" <|
+            \id ->
+                let
+                    xkcdJson =
+                        """
+                            {
+                                "month": "11",
+                            """
+                            ++ ("\"num\": " ++ String.fromInt id ++ ",\n")
+                            ++ """
+                                "link": "",
+                                "year": "2018",
+                                "news": "",
+                                "safe_title": "Trig Identities",
+                                "transcript": "show me maybe",
+                                "alt": "ARCTANGENT THETA = ENCHANT AT TARGET",
+                                "img": "https://imgs.xkcd.com/comics/trig_identities.png",
+                                "title": "Trig Identities",
+                                "day": "9"
+                            }
+                            """
+                in
+                Decode.decodeString Xkcd.decodeXkcd xkcdJson
+                    |> Result.map Xkcd.getTranscript
+                    -- xkcds after #1608 have faulty transcript. See https://www.explainxkcd.com/wiki/index.php/Transcript_on_xkcd for details.
+                    |> (if id > 1608 then
+                            Expect.equal (Ok Nothing)
+
+                        else
+                            Expect.equal (Ok <| Just "show me maybe")
+                       )
         ]
 
 

@@ -75,6 +75,14 @@ getMouseOver (Xkcd xkcd) =
 
 
 {-| The official transcript of the xkcd.
+
+Because of an issue on xkcd.com, the transcript might be missing on newer xkcds.
+See the [explanation on ExplainXKCD](https://www.explainxkcd.com/wiki/index.php/Transcript_on_xkcd)
+for further information.
+
+In light of these issues, this library does not offer transcripts for xkcds with
+an id greater than 1608.
+
 -}
 getTranscript : Xkcd -> Maybe String
 getTranscript (Xkcd xkcd) =
@@ -292,16 +300,16 @@ decodeXkcd =
                                 Decode.fail ("Invalid url '" ++ urlString ++ "'.")
                     )
 
-        decodeTranscript =
-            Decode.string
-                |> Decode.map
-                    (\transcript ->
-                        if String.isEmpty transcript then
+        -- Transcripts are broken for xkcds after #1608. See https://www.explainxkcd.com/wiki/index.php/Transcript_on_xkcd for details.
+        sanitizeTranscript xkcdContent =
+            { xkcdContent
+                | transcript =
+                    if xkcdContent.id > 1608 then
                         Nothing
 
                     else
-                            Just transcript
-                    )
+                        xkcdContent.transcript
+            }
     in
     Decode.map5
         XkcdContent
@@ -309,7 +317,8 @@ decodeXkcd =
         (Decode.field "img" decodeUrl)
         (Decode.field "title" Decode.string)
         (Decode.field "alt" Decode.string)
-        (Decode.field "transcript" decodeTranscript)
+        (Decode.field "transcript" (Decode.string |> Decode.map Just))
+        |> Decode.map sanitizeTranscript
         |> Decode.map Xkcd
 
 
