@@ -10,13 +10,15 @@
     "xhr2": "^0.1.4"
   },
   "scripts": {
-    "build": "npm run build:dev -- --optimize",
-    "build:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
-    "postinstall": "npm run clean:build && npm run build",
-    "clean:build": "rimraf elm-stuff/",
-    "start": "ts-node ./src/index.ts",
+    "build:prod": "npm run clean:build && npm run build:elm:prod && tsc",
+    "build:dev": "npm run clean:build && npm run build:elm:dev && tsc",
+    "build:elm:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
+    "build:elm:prod": "npm run build:elm:dev -- --optimize",
+    "clean:build": "rimraf dist/",
+    "postinstall": "npm run build:prod",
+    "start": "node ./dist/index.js",
     "start:dev": "npm run build:dev && cross-env NODE_ENV=dev npm run start",
-    "start:prod": "npm run build && npm run start"
+    "start:prod": "npm run build:prod && npm run start"
   },
   "repository": {
     "type": "git",
