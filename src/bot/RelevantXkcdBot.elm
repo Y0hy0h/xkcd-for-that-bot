@@ -3,7 +3,7 @@ module RelevantXkcdBot exposing (Model, Msg, handle, init, update)
 import Elmegram
 import Http
 import Json.Decode as Decode
-import RelevantXkcd
+import Xkcd
 import String.Extra as String
 import Task exposing (Task)
 import Telegram
@@ -80,7 +80,7 @@ handle newUpdate model =
                 Just id ->
                     do []
                         model
-                        (RelevantXkcd.fetchXkcd
+                        (Xkcd.fetchXkcd
                             id
                             |> Task.attempt
                                 (\result ->
@@ -100,12 +100,12 @@ handle newUpdate model =
 type Msg
     = NoOp
     | SendMessage Telegram.Chat String
-    | AnswerQuery Telegram.InlineQuery String (List RelevantXkcd.Xkcd)
-    | AnswerCallback Telegram.CallbackQuery RelevantXkcd.Xkcd
+    | AnswerQuery Telegram.InlineQuery String (List Xkcd.Xkcd)
+    | AnswerCallback Telegram.CallbackQuery Xkcd.Xkcd
     | AnswerCallbackFail Telegram.CallbackQuery
-    | FetchXkcd (Result String RelevantXkcd.Xkcd -> Msg) RelevantXkcd.XkcdId
-    | FetchXkcds (Result String (List RelevantXkcd.Xkcd) -> Msg) (List RelevantXkcd.XkcdId)
-    | SendXkcdMessage Telegram.Chat RelevantXkcd.Xkcd
+    | FetchXkcd (Result String Xkcd.Xkcd -> Msg) Xkcd.XkcdId
+    | FetchXkcds (Result String (List Xkcd.Xkcd) -> Msg) (List Xkcd.XkcdId)
+    | SendXkcdMessage Telegram.Chat Xkcd.Xkcd
 
 
 update : Msg -> Model -> Response
@@ -125,15 +125,15 @@ update msg model =
                             let
                                 article =
                                     Elmegram.makeMinimalInlineQueryResultArticle
-                                        { id = String.fromInt <| RelevantXkcd.getId xkcd
+                                        { id = String.fromInt <| Xkcd.getId xkcd
                                         , title = xkcdHeading xkcd
                                         , message = Elmegram.makeInputMessageFormatted <| xkcdText xkcd
                                         }
                             in
                             { article
-                                | description = RelevantXkcd.getTranscript xkcd
-                                , url = Just <| Telegram.Hide (RelevantXkcd.getComicUrl xkcd)
-                                , thumb_url = Just (RelevantXkcd.getPreviewUrl xkcd)
+                                | description = Xkcd.getTranscript xkcd
+                                , url = Just <| Telegram.Hide (Xkcd.getComicUrl xkcd)
+                                , thumb_url = Just (Xkcd.getPreviewUrl xkcd)
                                 , reply_markup = Just (xkcdKeyboard xkcd)
                             }
                                 |> Elmegram.inlineQueryResultFromArticle
@@ -157,7 +157,7 @@ update msg model =
 
                 answer =
                     { incompleteAnswer
-                        | text = Just <| (RelevantXkcd.getMouseOver xkcd |> String.ellipsis 200)
+                        | text = Just <| (Xkcd.getMouseOver xkcd |> String.ellipsis 200)
                         , show_alert = True
                     }
             in
@@ -169,7 +169,7 @@ update msg model =
         FetchXkcd tag id ->
             let
                 fetchXkcd =
-                    RelevantXkcd.fetchXkcd id
+                    Xkcd.fetchXkcd id
                         |> Task.attempt tag
             in
             do [] model fetchXkcd
@@ -177,7 +177,7 @@ update msg model =
         FetchXkcds tag ids ->
             let
                 fetchXkcds =
-                    RelevantXkcd.fetchXkcds ids
+                    Xkcd.fetchXkcds ids
                         |> Task.attempt tag
             in
             do [] model fetchXkcds
@@ -195,24 +195,24 @@ update msg model =
             simply [ answer |> Elmegram.methodFromMessage ] model
 
 
-xkcdHeading : RelevantXkcd.Xkcd -> String
+xkcdHeading : Xkcd.Xkcd -> String
 xkcdHeading xkcd =
-    ("#" ++ (String.fromInt <| RelevantXkcd.getId xkcd) ++ ": ")
-        ++ RelevantXkcd.getTitle xkcd
+    ("#" ++ (String.fromInt <| Xkcd.getId xkcd) ++ ": ")
+        ++ Xkcd.getTitle xkcd
 
 
-xkcdText : RelevantXkcd.Xkcd -> Elmegram.FormattedText
+xkcdText : Xkcd.Xkcd -> Elmegram.FormattedText
 xkcdText xkcd =
     Elmegram.format Telegram.Html
         (("<b>" ++ xkcdHeading xkcd ++ "</b>\n")
-            ++ (Url.toString <| RelevantXkcd.getComicUrl xkcd)
+            ++ (Url.toString <| Xkcd.getComicUrl xkcd)
         )
 
 
-xkcdKeyboard : RelevantXkcd.Xkcd -> Telegram.InlineKeyboard
+xkcdKeyboard : Xkcd.Xkcd -> Telegram.InlineKeyboard
 xkcdKeyboard xkcd =
-    [ [ Telegram.CallbackButton (RelevantXkcd.getId xkcd |> String.fromInt) "Show mouse-over" ]
-    , [ Telegram.UrlButton (RelevantXkcd.getExplainUrl xkcd) "Explain xkcd" ]
+    [ [ Telegram.CallbackButton (Xkcd.getId xkcd |> String.fromInt) "Show mouse-over" ]
+    , [ Telegram.UrlButton (Xkcd.getExplainUrl xkcd) "Explain xkcd" ]
     ]
 
 
@@ -256,11 +256,11 @@ commandNotFoundMessage self message =
 -- LOGIC
 
 
-fetchRelevantXkcd : String -> Task String RelevantXkcd.Xkcd
+fetchRelevantXkcd : String -> Task String Xkcd.Xkcd
 fetchRelevantXkcd query =
     let
         fetchCurrent =
-            RelevantXkcd.fetchCurrentXkcd
+            Xkcd.fetchCurrentXkcd
     in
     if String.isEmpty query then
         fetchCurrent
@@ -268,26 +268,26 @@ fetchRelevantXkcd query =
     else
         case String.toInt query of
             Just id ->
-                RelevantXkcd.fetchXkcd id
+                Xkcd.fetchXkcd id
 
             Nothing ->
-                RelevantXkcd.fetchRelevantIds query
+                Xkcd.fetchRelevantIds query
                     |> Task.andThen
                         (\ids ->
                             case ids of
                                 bestMatch :: _ ->
-                                    RelevantXkcd.fetchXkcd bestMatch
+                                    Xkcd.fetchXkcd bestMatch
 
                                 _ ->
                                     Task.fail ("No relevant xkcd for query '" ++ query ++ "'.")
                         )
 
 
-fetchRelevantXkcdsForQuery : String -> { amount : Int, offset : Int } -> Task String (List RelevantXkcd.Xkcd)
+fetchRelevantXkcdsForQuery : String -> { amount : Int, offset : Int } -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcdsForQuery query { amount, offset } =
     let
         fetchLatest =
-            RelevantXkcd.fetchLatestXkcds { amount = max 0 amount, offset = offset }
+            Xkcd.fetchLatestXkcds { amount = max 0 amount, offset = offset }
     in
     if String.isEmpty query then
         fetchLatest
@@ -295,7 +295,7 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
     else
         case String.toInt query of
             Just id ->
-                RelevantXkcd.fetchXkcd id
+                Xkcd.fetchXkcd id
                     |> Task.andThen
                         (\exactMatch ->
                             fetchRelevantXkcds (max 0 (amount - 1)) query
@@ -315,10 +315,10 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
                 fetchRelevantXkcds amount query
 
 
-fetchRelevantXkcds : Int -> String -> Task String (List RelevantXkcd.Xkcd)
+fetchRelevantXkcds : Int -> String -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcds amount query =
-    RelevantXkcd.fetchRelevantIds query
-        |> Task.andThen RelevantXkcd.fetchXkcds
+    Xkcd.fetchRelevantIds query
+        |> Task.andThen Xkcd.fetchXkcds
         |> Task.map (List.take amount)
 
 

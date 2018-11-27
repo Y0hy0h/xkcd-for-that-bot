@@ -1,4 +1,4 @@
-module RelevantXkcd exposing
+module Xkcd exposing
     ( Xkcd
     , XkcdId
     , fetchCurrentXkcd
