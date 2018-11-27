@@ -1,6 +1,7 @@
 module Xkcd exposing
     ( Xkcd
     , XkcdId
+    , decodeXkcd
     , fetchCurrentXkcd
     , fetchLatestXkcds
     , fetchRelevantIds
@@ -256,6 +257,14 @@ fetchLatestXkcds { amount, offset } =
 
 parseXkcd : String -> Result String Xkcd
 parseXkcd raw =
+    Decode.decodeString
+        decodeXkcd
+        raw
+        |> Result.mapError Decode.errorToString
+
+
+decodeXkcd : Decode.Decoder Xkcd
+decodeXkcd =
     let
         decodeUrl =
             Decode.string
@@ -280,18 +289,14 @@ parseXkcd raw =
                             Just transcript
                     )
     in
-    Decode.decodeString
-        (Decode.map5
-            XkcdContent
-            (Decode.field "num" Decode.int)
-            (Decode.field "img" decodeUrl)
-            (Decode.field "title" Decode.string)
-            (Decode.field "alt" Decode.string)
-            (Decode.field "transcript" decodeTranscript)
-        )
-        raw
-        |> Result.map Xkcd
-        |> Result.mapError Decode.errorToString
+    Decode.map5
+        XkcdContent
+        (Decode.field "num" Decode.int)
+        (Decode.field "img" decodeUrl)
+        (Decode.field "title" Decode.string)
+        (Decode.field "alt" Decode.string)
+        (Decode.field "transcript" decodeTranscript)
+        |> Decode.map Xkcd
 
 
 currentXkcdInfoUrl : Url
