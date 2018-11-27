@@ -17,9 +17,10 @@ async function startServer(app: Express.Express) {
     console.log('Development mode, starting to poll.')
     startPolling(unverifiedToken, Bot);
   } else {
-    console.log('Starting to listen to webhooks.')
     const { token, handleUpdate } = await setupBot(unverifiedToken, Bot);
-    const webhookUrl = getWebhookUrl(token);
+    const hookUrl = getWebhookUrl(token);
+    const webhookUrl = hookUrl.fullUrl;
+    console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
     await setupWebhook(token, webhookUrl);
     app.use(`/bot/${token}`, async (req, res, next) => {
       console.log("\nReceived update:");
@@ -38,9 +39,10 @@ async function startServer(app: Express.Express) {
   })
 }
 
-function getWebhookUrl(token: string): string {
-  const domain = process.env.HOST_DOMAIN
-  return `${domain}/bot/${token}`;
+function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } {
+  const domain = process.env.HOST_DOMAIN || "localhost";
+  const baseUrl = `${domain}/bot/`;
+  return { fullUrl: baseUrl + token, censoredUrl: `${baseUrl}<token>` };
 }
 
 export function getToken(): string | undefined {
