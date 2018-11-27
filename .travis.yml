@@ -26,3 +26,9 @@ cache:
 
 script:
   - yarn run elm-test
+
+deploy:
+  provider: heroku
+  api_key: HEROKU_API_KEY
+  app: xkcd-for-that-bot
+  on: master

@@ -1,7 +1,7 @@
 import Express from 'express';
 import path from 'path';
 import bodyParser from 'body-parser';
-import { setupBot, startPolling, setupWebhook } from './elmegram.js';
+import { setupBot, startPolling, setupWebhook } from '../packages/elmegram.js';
 const Bot = require('./bot.js');
 
 startServer(Express())
@@ -45,7 +45,7 @@ function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } 
   return { fullUrl: baseUrl + token, censoredUrl: `${baseUrl}<token>` };
 }
 
-export function getToken(): string | undefined {
+export function getToken(): string {
   const tokenName = 'TELEGRAM_TOKEN';
   const unverifiedToken = process.env[tokenName];
   if (typeof unverifiedToken == 'undefined') {
