@@ -63,6 +63,14 @@ fetchCurrentXkcdResolver response =
             Err "Error fetching current xkcd."
 
 
+parseXkcd : String -> Result String Xkcd
+parseXkcd raw =
+    Decode.decodeString
+        decodeXkcd
+        raw
+        |> Result.mapError Decode.errorToString
+
+
 latestXkcdIdsFromCurrentId : { amount : Int, offset : Int } -> XkcdId -> List XkcdId
 latestXkcdIdsFromCurrentId { amount, offset } currentId =
     let
@@ -138,11 +146,3 @@ parseXkcdId line =
 
         malformed ->
             Err <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ "."
-
-
-parseXkcd : String -> Result String Xkcd
-parseXkcd raw =
-    Decode.decodeString
-        decodeXkcd
-        raw
-        |> Result.mapError Decode.errorToString
