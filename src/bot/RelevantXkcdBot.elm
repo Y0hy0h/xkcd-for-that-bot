@@ -8,6 +8,7 @@ import Task exposing (Task)
 import Telegram
 import Url
 import Xkcd
+import Xkcd.Fetch as Xkcd
 
 
 type alias Response =
