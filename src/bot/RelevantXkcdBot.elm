@@ -171,6 +171,7 @@ update msg model =
             let
                 fetchXkcd =
                     Xkcd.fetchXkcd id
+                        |> Task.mapError Xkcd.stringFromFetchXkcdError
                         |> Task.attempt tag
             in
             do [] model fetchXkcd
@@ -179,6 +180,7 @@ update msg model =
             let
                 fetchXkcds =
                     Xkcd.fetchXkcds ids
+                        |> Task.mapError Xkcd.stringFromFetchXkcdError
                         |> Task.attempt tag
             in
             do [] model fetchXkcds
@@ -265,19 +267,23 @@ fetchRelevantXkcd query =
     in
     if String.isEmpty query then
         fetchCurrent
+            |> Task.mapError Xkcd.stringFromFetchXkcdError
 
     else
         case String.toInt query of
             Just id ->
                 Xkcd.fetchXkcd id
+                    |> Task.mapError Xkcd.stringFromFetchXkcdError
 
             Nothing ->
                 Xkcd.fetchRelevantIds query
+                    |> Task.mapError Xkcd.stringFromFetchRelevantXkcdError
                     |> Task.andThen
                         (\ids ->
                             case ids of
                                 bestMatch :: _ ->
                                     Xkcd.fetchXkcd bestMatch
+                                        |> Task.mapError Xkcd.stringFromFetchXkcdError
 
                                 _ ->
                                     Task.fail ("No relevant xkcd for query '" ++ query ++ "'.")
@@ -293,11 +299,13 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
     in
     if String.isEmpty query then
         fetchLatest
+            |> Task.mapError Xkcd.stringFromFetchXkcdError
 
     else
         case String.toInt query of
             Just id ->
                 Xkcd.fetchXkcd id
+                    |> Task.mapError Xkcd.stringFromFetchXkcdError
                     |> Task.andThen
                         (\exactMatch ->
                             fetchRelevantXkcds (max 0 (amount - 1)) query
@@ -320,7 +328,11 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
 fetchRelevantXkcds : Int -> String -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcds amount query =
     Xkcd.fetchRelevantIds query
-        |> Task.andThen Xkcd.fetchXkcds
+        |> Task.mapError Xkcd.stringFromFetchRelevantXkcdError
+        |> Task.andThen
+            (Xkcd.fetchXkcds
+                >> Task.mapError Xkcd.stringFromFetchXkcdError
+            )
         |> Task.map (List.take amount)
 
 
