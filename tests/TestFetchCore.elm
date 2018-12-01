@@ -148,6 +148,68 @@ suite =
                         in
                         Core.fetchRelevantIdsResolver response
                             |> Expect.equal (Ok [ 59, 2, 1044 ])
+                , test "invalid line yields Invalid" <|
+                    \_ ->
+                        let
+                            url =
+                                buildQueryUrl
+                                    "relevantxkcd.appspot.com"
+                                    "/process"
+                                    "action=xkcd&query=ballmer's peak"
+
+                            -- TODO: Replace by actual response
+                            response =
+                                buildGoodResponse url
+                                    ("0.495\n"
+                                        ++ "0.3555\n"
+                                        ++ "59\n"
+                                    )
+                        in
+                        case Core.fetchRelevantIdsResolver response of
+                            Err (Error.Invalid _) ->
+                                Expect.pass
+
+                            Err other ->
+                                Expect.fail
+                                    ("Expected Err containing Invalid, but received:\n"
+                                        ++ Error.stringFromFetchError (\_ -> "Invalid") other
+                                    )
+
+                            Ok ids ->
+                                Expect.fail
+                                    ("Expected Err containing Invalid, but received ids:\n["
+                                        ++ (List.map String.fromInt ids |> String.join ", ")
+                                        ++ "]"
+                                    )
+                , test "too few lines yields Invalid" <|
+                    \_ ->
+                        let
+                            url =
+                                buildQueryUrl
+                                    "relevantxkcd.appspot.com"
+                                    "/process"
+                                    "action=xkcd&query=ballmer's peak"
+
+                            -- TODO: Replace by actual response
+                            response =
+                                buildGoodResponse url "0.495\n"
+                        in
+                        case Core.fetchRelevantIdsResolver response of
+                            Err (Error.Invalid _) ->
+                                Expect.pass
+
+                            Err other ->
+                                Expect.fail
+                                    ("Expected Err containing Invalid, but received:\n"
+                                        ++ Error.stringFromFetchError (\_ -> "Invalid") other
+                                    )
+
+                            Ok ids ->
+                                Expect.fail
+                                    ("Expected Err containing Invalid, but received ids:\n["
+                                        ++ (List.map String.fromInt ids |> String.join ", ")
+                                        ++ "]"
+                                    )
                 ]
             ]
         ]

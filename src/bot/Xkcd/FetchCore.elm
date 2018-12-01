@@ -118,24 +118,39 @@ parseRelevantXkcdResponse body =
         dropFromEnd amount list =
             List.take (List.length list - amount) list
 
-        sanitizeBody =
-            -- The first two entries are statistics.
-            List.drop 2
-                -- The last line is a newline.
-                >> dropFromEnd 1
+        sanitizeLines lines =
+            let
+                amount =
+                    List.length lines
+            in
+            if amount >= 3 then
+                -- The first two entries are statistics.
+                List.drop 2 lines
+                    -- The last line is a newline.
+                    |> dropFromEnd 1
+                    |> Ok
+
+            else
+                Err (Invalid <| "Expected 3 lines, but got only " ++ String.fromInt amount ++ ".")
     in
     String.lines body
-        |> sanitizeBody
-        |> List.map parseRelevantXkcdId
-        |> List.foldl
-            (\result list ->
-                Result.map2 (\xkcd existing -> existing ++ [ xkcd ]) result list
+        |> sanitizeLines
+        |> Result.andThen
+            (\lines ->
+                List.map parseLine lines
+                    |> List.foldl
+                        (\result ->
+                            Result.andThen
+                                (\previousIds ->
+                                    Result.map (\id -> previousIds ++ [ id ]) result
+                                )
+                        )
+                        (Ok [])
             )
-            (Ok [])
 
 
-parseRelevantXkcdId : String -> Result FetchRelevantXkcdError XkcdId
-parseRelevantXkcdId line =
+parseLine : String -> Result FetchRelevantXkcdError XkcdId
+parseLine line =
     case String.words line of
         idString :: urlString :: [] ->
             case String.toInt idString of
