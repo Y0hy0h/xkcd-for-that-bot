@@ -1,4 +1,4 @@
-module Xkcd.FetchCore exposing (FetchError(..), FetchRelevantXkcdError, FetchXkcdError, currentXkcdInfoUrl, fetchCurrentXkcdResolver, fetchRelevantIdsResolver, fetchXkcdResolver, latestXkcdIdsFromCurrentId, relevantXkcdUrl, xkcdInfoUrl)
+module Xkcd.FetchCore exposing (currentXkcdInfoUrl, fetchCurrentXkcdResolver, fetchRelevantIdsResolver, fetchXkcdResolver, latestXkcdIdsFromCurrentId, relevantXkcdUrl, xkcdInfoUrl)
 
 {-| Core functionality for Fetch.
 -}
@@ -8,6 +8,7 @@ import Json.Decode as Decode
 import Task exposing (Task)
 import Url exposing (Url)
 import Xkcd exposing (..)
+import Xkcd.FetchError exposing (..)
 
 
 xkcdInfoUrl : XkcdId -> Url
@@ -142,31 +143,6 @@ parseRelevantXkcdId line =
 
         malformed ->
             Err (Invalid <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ ".")
-
-
-
--- HTTP ERRORS
-
-
-type FetchError invalid
-    = Network HttpError
-    | Invalid invalid
-    | Unreleased Xkcd.XkcdId
-
-
-type alias FetchXkcdError =
-    FetchError Decode.Error
-
-
-type alias FetchRelevantXkcdError =
-    FetchError String
-
-
-type HttpError
-    = BadUrl String
-    | Timeout
-    | NetworkError
-    | BadStatus Http.Metadata String
 
 
 resultFromResponse : Http.Response String -> Result HttpError ( Http.Metadata, String )

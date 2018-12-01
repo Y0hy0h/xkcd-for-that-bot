@@ -9,6 +9,7 @@ import Test exposing (..)
 import Url exposing (Url)
 import Xkcd
 import Xkcd.FetchCore as Core
+import Xkcd.FetchError as Error
 
 
 suite : Test
@@ -56,7 +57,7 @@ suite =
                                     "xkcd not found."
                         in
                         Core.fetchXkcdResolver 1000000 badResponse
-                            |> Expect.equal (Err <| Core.Unreleased 1000000)
+                            |> Expect.equal (Err <| Error.Unreleased 1000000)
                 ]
             ]
         ]

@@ -9,6 +9,7 @@ import Telegram
 import Url
 import Xkcd
 import Xkcd.Fetch as Xkcd
+import Xkcd.FetchError as XkcdError
 
 
 type alias Response =
@@ -171,7 +172,7 @@ update msg model =
             let
                 fetchXkcd =
                     Xkcd.fetchXkcd id
-                        |> Task.mapError Xkcd.stringFromFetchXkcdError
+                        |> Task.mapError XkcdError.stringFromFetchXkcdError
                         |> Task.attempt tag
             in
             do [] model fetchXkcd
@@ -180,7 +181,7 @@ update msg model =
             let
                 fetchXkcds =
                     Xkcd.fetchXkcds ids
-                        |> Task.mapError Xkcd.stringFromFetchXkcdError
+                        |> Task.mapError XkcdError.stringFromFetchXkcdError
                         |> Task.attempt tag
             in
             do [] model fetchXkcds
@@ -267,23 +268,23 @@ fetchRelevantXkcd query =
     in
     if String.isEmpty query then
         fetchCurrent
-            |> Task.mapError Xkcd.stringFromFetchXkcdError
+            |> Task.mapError XkcdError.stringFromFetchXkcdError
 
     else
         case String.toInt query of
             Just id ->
                 Xkcd.fetchXkcd id
-                    |> Task.mapError Xkcd.stringFromFetchXkcdError
+                    |> Task.mapError XkcdError.stringFromFetchXkcdError
 
             Nothing ->
                 Xkcd.fetchRelevantIds query
-                    |> Task.mapError Xkcd.stringFromFetchRelevantXkcdError
+                    |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
                     |> Task.andThen
                         (\ids ->
                             case ids of
                                 bestMatch :: _ ->
                                     Xkcd.fetchXkcd bestMatch
-                                        |> Task.mapError Xkcd.stringFromFetchXkcdError
+                                        |> Task.mapError XkcdError.stringFromFetchXkcdError
 
                                 _ ->
                                     Task.fail ("No relevant xkcd for query '" ++ query ++ "'.")
@@ -299,13 +300,13 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
     in
     if String.isEmpty query then
         fetchLatest
-            |> Task.mapError Xkcd.stringFromFetchXkcdError
+            |> Task.mapError XkcdError.stringFromFetchXkcdError
 
     else
         case String.toInt query of
             Just id ->
                 Xkcd.fetchXkcd id
-                    |> Task.mapError Xkcd.stringFromFetchXkcdError
+                    |> Task.mapError XkcdError.stringFromFetchXkcdError
                     |> Task.andThen
                         (\exactMatch ->
                             fetchRelevantXkcds (max 0 (amount - 1)) query
@@ -328,10 +329,10 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
 fetchRelevantXkcds : Int -> String -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcds amount query =
     Xkcd.fetchRelevantIds query
-        |> Task.mapError Xkcd.stringFromFetchRelevantXkcdError
+        |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
         |> Task.andThen
             (Xkcd.fetchXkcds
-                >> Task.mapError Xkcd.stringFromFetchXkcdError
+                >> Task.mapError XkcdError.stringFromFetchXkcdError
             )
         |> Task.map (List.take amount)
 

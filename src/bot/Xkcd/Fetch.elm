@@ -1,7 +1,4 @@
-module Xkcd.Fetch exposing
-    ( fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds
-    , FetchError, FetchRelevantXkcdError, FetchXkcdError, stringFromFetchError, stringFromFetchRelevantXkcdError, stringFromFetchXkcdError
-    )
+module Xkcd.Fetch exposing (fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds)
 
 {-| Fetch xkcds by id, chronologically or by relevance.
 
@@ -18,6 +15,7 @@ import Task exposing (Task)
 import Url exposing (Url)
 import Xkcd exposing (..)
 import Xkcd.FetchCore as Core
+import Xkcd.FetchError exposing (..)
 
 
 {-| Fetch the xkcd corresponding to the id over HTTP.
@@ -84,42 +82,3 @@ fetchRelevantIds query =
         , resolver = Http.stringResolver Core.fetchRelevantIdsResolver
         , timeout = Nothing
         }
-
-
-
--- ERRORS
-
-
-type alias FetchError invalid =
-    Core.FetchError invalid
-
-
-stringFromFetchError : (invalid -> String) -> FetchError invalid -> String
-stringFromFetchError stringFromInvalid error =
-    case error of
-        Core.Network httpError ->
-            "Error while fetching xkcd."
-
-        Core.Invalid invalid ->
-            stringFromInvalid invalid
-
-        Core.Unreleased id ->
-            "xkcd #" ++ String.fromInt id ++ " is not yet released."
-
-
-type alias FetchXkcdError =
-    Core.FetchXkcdError
-
-
-stringFromFetchXkcdError : FetchXkcdError -> String
-stringFromFetchXkcdError error =
-    stringFromFetchError Decode.errorToString error
-
-
-type alias FetchRelevantXkcdError =
-    Core.FetchRelevantXkcdError
-
-
-stringFromFetchRelevantXkcdError : FetchRelevantXkcdError -> String
-stringFromFetchRelevantXkcdError error =
-    stringFromFetchError identity error
