@@ -116,6 +116,40 @@ suite =
                     in
                     Expect.equal result sorted
             ]
+        , describe "relevantXkcd"
+            [ test "url" <|
+                \_ ->
+                    Core.relevantXkcdUrl "ballmer's peak"
+                        |> Expect.equal
+                            (buildQueryUrl
+                                "relevantxkcd.appspot.com"
+                                "/process"
+                                "action=xkcd&query=ballmer's peak"
+                            )
+            , describe "fetchRelevantIdsResolver"
+                [ test "valid response returns ids" <|
+                    \_ ->
+                        let
+                            url =
+                                buildQueryUrl
+                                    "relevantxkcd.appspot.com"
+                                    "/process"
+                                    "action=xkcd&query=ballmer's peak"
+
+                            -- TODO: Replace by actual response
+                            response =
+                                buildGoodResponse url
+                                    ("0.495\n"
+                                        ++ "0.3555\n"
+                                        ++ "59 xkcd.com/59\n"
+                                        ++ "2 xkcd.com/2\n"
+                                        ++ "1044 xkcd.com/1044\n"
+                                    )
+                        in
+                        Core.fetchRelevantIdsResolver response
+                            |> Expect.equal (Ok [ 59, 2, 1044 ])
+                ]
+            ]
         ]
 
 
@@ -180,6 +214,17 @@ buildUrl host path =
     , port_ = Nothing
     , path = path
     , query = Nothing
+    , fragment = Nothing
+    }
+
+
+buildQueryUrl : String -> String -> String -> Url
+buildQueryUrl host path query =
+    { protocol = Url.Https
+    , host = host
+    , port_ = Nothing
+    , path = path
+    , query = Just query
     , fragment = Nothing
     }
 
