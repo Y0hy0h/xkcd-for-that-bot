@@ -1,6 +1,6 @@
-module Xkcd.FetchCore exposing (currentXkcdInfoUrl, fetchCurrentXkcdResolver, fetchRelevantIdsResolver, fetchXkcdResolver, latestXkcdIdsFromCurrentId, relevantXkcdUrl, xkcdInfoUrl)
+module Xkcd.FetchCore exposing (FetchError(..), FetchRelevantXkcdError, FetchXkcdError, currentXkcdInfoUrl, fetchCurrentXkcdResolver, fetchRelevantIdsResolver, fetchXkcdResolver, latestXkcdIdsFromCurrentId, relevantXkcdUrl, xkcdInfoUrl)
 
-{-| Core functionality for Fetch. Meant for import by tests only.
+{-| Core functionality for Fetch.
 -}
 
 import Http
@@ -21,25 +21,27 @@ xkcdInfoUrl id =
     }
 
 
-fetchXkcdResolver : Int -> Http.Response String -> Result String Xkcd
+fetchXkcdResolver : Int -> Http.Response String -> Result FetchXkcdError Xkcd
 fetchXkcdResolver id response =
     let
         genericError =
             Err ("Error fetching xkcd with id " ++ String.fromInt id ++ ".")
     in
-    case response of
-        Http.GoodStatus_ _ res ->
-            parseXkcd res
+    resultFromResponse response
+        |> Result.mapError
+            (\error ->
+                case error of
+                    (BadStatus { statusCode } _) as original ->
+                        if statusCode == 404 then
+                            Unreleased id
 
-        Http.BadStatus_ { statusCode } _ ->
-            if statusCode == 404 then
-                Err ("#" ++ String.fromInt id ++ " is not yet released.")
+                        else
+                            Network original
 
-            else
-                genericError
-
-        _ ->
-            genericError
+                    networkError ->
+                        Network networkError
+            )
+        |> Result.andThen (\( _, res ) -> parseXkcd res)
 
 
 currentXkcdInfoUrl : Url
@@ -53,22 +55,19 @@ currentXkcdInfoUrl =
     }
 
 
-fetchCurrentXkcdResolver : Http.Response String -> Result String Xkcd
+fetchCurrentXkcdResolver : Http.Response String -> Result FetchXkcdError Xkcd
 fetchCurrentXkcdResolver response =
-    case response of
-        Http.GoodStatus_ _ res ->
-            parseXkcd res
-
-        _ ->
-            Err "Error fetching current xkcd."
+    resultFromResponse response
+        |> Result.mapError Network
+        |> Result.andThen (\( _, res ) -> parseXkcd res)
 
 
-parseXkcd : String -> Result String Xkcd
+parseXkcd : String -> Result FetchXkcdError Xkcd
 parseXkcd raw =
     Decode.decodeString
         decodeXkcd
         raw
-        |> Result.mapError Decode.errorToString
+        |> Result.mapError Invalid
 
 
 latestXkcdIdsFromCurrentId : { amount : Int, offset : Int } -> XkcdId -> List XkcdId
@@ -101,18 +100,15 @@ relevantXkcdUrl query =
     }
 
 
-fetchRelevantIdsResolver : Http.Response String -> Result String (List XkcdId)
+fetchRelevantIdsResolver : Http.Response String -> Result FetchRelevantXkcdError (List XkcdId)
 fetchRelevantIdsResolver response =
-    case response of
-        Http.GoodStatus_ _ body ->
-            parseResponse body
-
-        _ ->
-            Err "Error fetching xkcd."
+    resultFromResponse response
+        |> Result.mapError Network
+        |> Result.andThen (\( _, res ) -> parseRelevantXkcdResponse res)
 
 
-parseResponse : String -> Result String (List XkcdId)
-parseResponse body =
+parseRelevantXkcdResponse : String -> Result FetchRelevantXkcdError (List XkcdId)
+parseRelevantXkcdResponse body =
     let
         dropFromEnd amount list =
             List.take (List.length list - amount) list
@@ -125,7 +121,7 @@ parseResponse body =
     in
     String.lines body
         |> sanitizeBody
-        |> List.map parseXkcdId
+        |> List.map parseRelevantXkcdId
         |> List.foldl
             (\result list ->
                 Result.map2 (\xkcd existing -> existing ++ [ xkcd ]) result list
@@ -133,8 +129,8 @@ parseResponse body =
             (Ok [])
 
 
-parseXkcdId : String -> Result String XkcdId
-parseXkcdId line =
+parseRelevantXkcdId : String -> Result FetchRelevantXkcdError XkcdId
+parseRelevantXkcdId line =
     case String.words line of
         idString :: urlString :: [] ->
             case String.toInt idString of
@@ -142,7 +138,51 @@ parseXkcdId line =
                     Ok id
 
                 _ ->
-                    Err "Malformed line. Could not convert id."
+                    Err (Invalid "Malformed line. Could not convert id.")
 
         malformed ->
-            Err <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ "."
+            Err (Invalid <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ ".")
+
+
+
+-- HTTP ERRORS
+
+
+type FetchError invalid
+    = Network HttpError
+    | Invalid invalid
+    | Unreleased Xkcd.XkcdId
+
+
+type alias FetchXkcdError =
+    FetchError Decode.Error
+
+
+type alias FetchRelevantXkcdError =
+    FetchError String
+
+
+type HttpError
+    = BadUrl String
+    | Timeout
+    | NetworkError
+    | BadStatus Http.Metadata String
+
+
+resultFromResponse : Http.Response String -> Result HttpError ( Http.Metadata, String )
+resultFromResponse response =
+    case response of
+        Http.GoodStatus_ meta body ->
+            Ok ( meta, body )
+
+        Http.BadStatus_ meta body ->
+            Err (BadStatus meta body)
+
+        Http.BadUrl_ url ->
+            Err (BadUrl url)
+
+        Http.Timeout_ ->
+            Err Timeout
+
+        Http.NetworkError_ ->
+            Err NetworkError
