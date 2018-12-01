@@ -74,17 +74,21 @@ parseXkcd raw =
 latestXkcdIdsFromCurrentId : { amount : Int, offset : Int } -> XkcdId -> List XkcdId
 latestXkcdIdsFromCurrentId { amount, offset } currentId =
     let
+        -- `List.range` includes the upper bound, therefore we need one less.
+        sanitizedAmount =
+            max -1 (amount - 1)
+
         sanitizedOffset =
             max 0 offset
 
-        sanitizedAmount =
-            max 0 amount
+        sanitizedCurrentId =
+            max 1 currentId
 
         maxId =
-            currentId - sanitizedOffset
+            max 1 (sanitizedCurrentId - sanitizedOffset)
 
         minId =
-            max 0 (maxId - sanitizedAmount)
+            max 1 (maxId - sanitizedAmount)
     in
     List.range minId maxId
         |> List.reverse
