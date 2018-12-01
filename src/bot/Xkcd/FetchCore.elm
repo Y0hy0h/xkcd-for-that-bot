@@ -42,7 +42,7 @@ fetchXkcdResolver id response =
                     networkError ->
                         Network networkError
             )
-        |> Result.andThen (\( _, res ) -> parseXkcd res)
+        |> Result.andThen (\{ body } -> parseXkcd body)
 
 
 currentXkcdInfoUrl : Url
@@ -60,7 +60,7 @@ fetchCurrentXkcdResolver : Http.Response String -> Result FetchXkcdError Xkcd
 fetchCurrentXkcdResolver response =
     resultFromResponse response
         |> Result.mapError Network
-        |> Result.andThen (\( _, res ) -> parseXkcd res)
+        |> Result.andThen (\{ body } -> parseXkcd body)
 
 
 parseXkcd : String -> Result FetchXkcdError Xkcd
@@ -105,7 +105,7 @@ fetchRelevantIdsResolver : Http.Response String -> Result FetchRelevantXkcdError
 fetchRelevantIdsResolver response =
     resultFromResponse response
         |> Result.mapError Network
-        |> Result.andThen (\( _, res ) -> parseRelevantXkcdResponse res)
+        |> Result.andThen (\{ body } -> parseRelevantXkcdResponse body)
 
 
 parseRelevantXkcdResponse : String -> Result FetchRelevantXkcdError (List XkcdId)
@@ -143,22 +143,3 @@ parseRelevantXkcdId line =
 
         malformed ->
             Err (Invalid <| "Malformed line. Expected 2 fields, got " ++ (List.length malformed |> String.fromInt) ++ ".")
-
-
-resultFromResponse : Http.Response String -> Result HttpError ( Http.Metadata, String )
-resultFromResponse response =
-    case response of
-        Http.GoodStatus_ meta body ->
-            Ok ( meta, body )
-
-        Http.BadStatus_ meta body ->
-            Err (BadStatus meta body)
-
-        Http.BadUrl_ url ->
-            Err (BadUrl url)
-
-        Http.Timeout_ ->
-            Err Timeout
-
-        Http.NetworkError_ ->
-            Err NetworkError
