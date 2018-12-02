@@ -9,9 +9,6 @@ startServer(Express())
 async function startServer(app: Express.Express) {
   app.use(bodyParser.json());
 
-  // Static website
-  app.use(Express.static(path.join(__dirname, '/public/')))
-
   const unverifiedToken = getToken();
   if (process.env.NODE_ENV && process.env.NODE_ENV == 'dev') {
     console.log('Development mode, starting to poll.')
