@@ -18,8 +18,8 @@
     "postinstall": "npm run install:localDeps && npm run build:prod",
     "install:localDeps": "cd packages/elmegram.js && npm run build && cd ../..",
     "start": "node ./dist/index.js",
-    "start:dev": "ts-node ./src/index.ts",
-    "launch:dev": "npm run build:dev && cross-env NODE_ENV=dev npm run start:dev",
+    "start:dev": "cross-env NODE_ENV=dev ts-node ./src/index.ts",
+    "launch:dev": "npm run build:dev && npm run start:dev",
     "launch:prod": "npm run build:prod && npm run start"
   },
   "repository": {
