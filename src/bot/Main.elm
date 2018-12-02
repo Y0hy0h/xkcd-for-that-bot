@@ -12,7 +12,7 @@ import Telegram
 main =
     Elmegram.Runner.bot
         { init = Bot.init
-        , handle = Bot.handle
+        , newUpdateMsg = Bot.newUpdateMsg
         , update = Bot.update
         , incomingUpdatePort = incomingUpdatePort
         , methodPort = methodPort
