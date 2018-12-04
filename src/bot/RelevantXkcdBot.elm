@@ -268,7 +268,7 @@ fetchSuitableXkcd query =
                     |> Task.mapError XkcdError.stringFromFetchXkcdError
 
             Nothing ->
-                Xkcd.fetchRelevantIds query
+                Xkcd.fetchRelevantXkcdIds query
                     |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
                     |> Task.andThen
                         (\ids ->
@@ -319,7 +319,7 @@ fetchSuitableXkcds query { amount, offset } =
 
 fetchRelevantXkcds : Int -> String -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcds amount query =
-    Xkcd.fetchRelevantIds query
+    Xkcd.fetchRelevantXkcdIds query
         |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
         |> Task.andThen
             (Xkcd.fetchXkcds

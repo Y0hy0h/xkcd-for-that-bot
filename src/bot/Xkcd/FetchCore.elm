@@ -11,6 +11,10 @@ import Xkcd exposing (..)
 import Xkcd.FetchError exposing (..)
 
 
+
+-- fetchXkcd
+
+
 xkcdInfoUrl : XkcdId -> Url
 xkcdInfoUrl id =
     { protocol = Url.Https
@@ -45,6 +49,10 @@ fetchXkcdResolver id response =
         |> Result.andThen (\{ body } -> parseXkcd body)
 
 
+
+-- fetchCurrentXkcd
+
+
 currentXkcdInfoUrl : Url
 currentXkcdInfoUrl =
     { protocol = Url.Https
@@ -71,6 +79,10 @@ parseXkcd raw =
         |> Result.mapError Invalid
 
 
+
+-- fetchLatestXkcdIds
+
+
 latestXkcdIdsFromCurrentId : { amount : Int, offset : Int } -> XkcdId -> List XkcdId
 latestXkcdIdsFromCurrentId { amount, offset } currentId =
     let
@@ -92,6 +104,10 @@ latestXkcdIdsFromCurrentId { amount, offset } currentId =
     in
     List.range minId maxId
         |> List.reverse
+
+
+
+-- fetchRelevantXkcdIds
 
 
 relevantXkcdUrl : String -> Url
