@@ -99,35 +99,33 @@ custom `HttpError`.
 Using the `Result` package's functions, you can change and work with the
 response and the error:
 
-```
-intResolver : Http.Resolver String Int
-intResolver =
-    Http.stringResolver
-        (resultFromResponse
-            >> Result.mapError
-                (\err ->
-                    case err of
-                        (BadStatus meta body) as original ->
-                            if meta.statusCode == 404 then
-                                "Could not find the website."
+    intResolver : Http.Resolver String Int
+    intResolver =
+        Http.stringResolver
+            (resultFromResponse
+                >> Result.mapError
+                    (\err ->
+                        case err of
+                            (BadStatus meta body) as original ->
+                                if meta.statusCode == 404 then
+                                    "Could not find the website."
 
-                            else
+                                else
+                                    "Something went wrong."
+
+                            _ ->
                                 "Something went wrong."
+                    )
+                >> Result.andThen
+                    (\{ body } ->
+                        case String.toInt body of
+                            Just int ->
+                                Ok int
 
-                        _ ->
-                            "Something went wrong."
-                )
-            >> Result.andThen
-                (\{ body } ->
-                    case String.toInt body of
-                        Just int ->
-                            Ok int
-
-                        Nothing ->
-                            Err "Response was not a valid integer."
-                )
-        )
-```
+                            Nothing ->
+                                Err "Response was not a valid integer."
+                    )
+            )
 
 -}
 resultFromResponse : Http.Response a -> Result (HttpError a) { meta : Http.Metadata, body : a }
