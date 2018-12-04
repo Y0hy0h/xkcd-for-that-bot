@@ -1,11 +1,11 @@
-module Xkcd.Fetch exposing (fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds)
+module Xkcd.Fetch exposing (fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantXkcdIds)
 
 {-| Fetch xkcds by id, chronologically or by relevance.
 
 
 ## Fetching Xkcds
 
-@docs fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantIds
+@docs fetchXkcd, fetchXkcds, fetchCurrentXkcd, fetchLatestXkcdIds, fetchRelevantXkcdIds
 
 -}
 
@@ -72,8 +72,8 @@ fetchLatestXkcdIds config =
 Relevance is according to <https://relevantxkcd.appspot.com/>.
 
 -}
-fetchRelevantIds : String -> Task FetchRelevantXkcdError (List XkcdId)
-fetchRelevantIds query =
+fetchRelevantXkcdIds : String -> Task FetchRelevantXkcdError (List XkcdId)
+fetchRelevantXkcdIds query =
     Http.task
         { method = "GET"
         , headers = []

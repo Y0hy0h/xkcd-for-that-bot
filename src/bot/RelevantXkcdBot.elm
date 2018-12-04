@@ -1,4 +1,4 @@
-module RelevantXkcdBot exposing (Model, Msg, handle, init, newUpdateMsg, update)
+module RelevantXkcdBot exposing (Model, Msg, init, newUpdateMsg, update)
 
 import Elmegram
 import Http
@@ -26,15 +26,12 @@ init user =
 
 
 type Msg
-    = NoOp
-    | NewUpdate Telegram.Update
+    = NewUpdate Telegram.Update
     | SendMessage Telegram.Chat String
+    | SendXkcdMessage Telegram.Chat Xkcd.Xkcd
     | AnswerQuery Telegram.InlineQuery String (List Xkcd.Xkcd)
     | AnswerCallback Telegram.CallbackQuery Xkcd.Xkcd
     | AnswerCallbackFail Telegram.CallbackQuery
-    | FetchXkcd (Result String Xkcd.Xkcd -> Msg) Xkcd.XkcdId
-    | FetchXkcds (Result String (List Xkcd.Xkcd) -> Msg) (List Xkcd.XkcdId)
-    | SendXkcdMessage Telegram.Chat Xkcd.Xkcd
 
 
 newUpdateMsg : Telegram.Update -> Msg
@@ -44,12 +41,89 @@ newUpdateMsg =
 
 update : Msg -> Model -> Response
 update msg model =
-    case msg of
-        NoOp ->
-            keep model
+    let
+        handleUpdate : Telegram.Update -> Response
+        handleUpdate newUpdate =
+            case newUpdate.content of
+                -- Message
+                Telegram.MessageUpdate message ->
+                    -- Help Command
+                    if Elmegram.matchesCommand "start" message || Elmegram.matchesCommand "help" message then
+                        simply [ helpMessage model.self message.chat ] model
+                        -- Invalid Command
 
+                    else if Elmegram.containsCommand message then
+                        simply [ commandNotFoundMessage model.self message ] model
+                        -- xkcd Query
+
+                    else
+                        let
+                            getXkcd =
+                                fetchSuitableXkcd
+                                    message.text
+                                    |> Task.attempt
+                                        (\result ->
+                                            case result of
+                                                Ok xkcd ->
+                                                    SendXkcdMessage message.chat xkcd
+
+                                                Err err ->
+                                                    SendMessage message.chat err
+                                        )
+                        in
+                        do [] model getXkcd
+
+                -- Inline Query
+                Telegram.InlineQueryUpdate inlineQuery ->
+                    let
+                        offset =
+                            String.toInt inlineQuery.offset |> Maybe.withDefault 0
+
+                        getXkcd =
+                            fetchSuitableXkcds
+                                inlineQuery.query
+                                { amount = 10, offset = offset }
+                                |> Task.attempt
+                                    (\result ->
+                                        case result of
+                                            Ok xkcds ->
+                                                let
+                                                    newOffset =
+                                                        List.length xkcds |> String.fromInt
+                                                in
+                                                AnswerQuery inlineQuery newOffset xkcds
+
+                                            Err _ ->
+                                                AnswerQuery inlineQuery "" []
+                                    )
+                    in
+                    do [] model getXkcd
+
+                -- Callback Query (from inline keyboard button)
+                Telegram.CallbackQueryUpdate callbackQuery ->
+                    case String.toInt callbackQuery.data of
+                        Just id ->
+                            do []
+                                model
+                                (Xkcd.fetchXkcd
+                                    id
+                                    |> Task.attempt
+                                        (\result ->
+                                            case result of
+                                                Ok xkcd ->
+                                                    AnswerCallback callbackQuery xkcd
+
+                                                Err _ ->
+                                                    AnswerCallbackFail callbackQuery
+                                        )
+                                )
+
+                        Nothing ->
+                            simply [ answerCallbackFail callbackQuery ] model
+    in
+    case msg of
         NewUpdate telegramUpdate ->
-            handle telegramUpdate model
+            handleUpdate telegramUpdate
 
         SendMessage to text ->
             simply [ Elmegram.answer to text ] model
@@ -103,24 +177,6 @@ update msg model =
         AnswerCallbackFail to ->
             simply [ answerCallbackFail to ] model
 
-        FetchXkcd tag id ->
-            let
-                fetchXkcd =
-                    Xkcd.fetchXkcd id
-                        |> Task.mapError XkcdError.stringFromFetchXkcdError
-                        |> Task.attempt tag
-            in
-            do [] model fetchXkcd
-
-        FetchXkcds tag ids ->
-            let
-                fetchXkcds =
-                    Xkcd.fetchXkcds ids
-                        |> Task.mapError XkcdError.stringFromFetchXkcdError
-                        |> Task.attempt tag
-            in
-            do [] model fetchXkcds
-
         SendXkcdMessage to xkcd ->
             let
                 incompleteAnswer =
@@ -132,80 +188,6 @@ update msg model =
                     }
             in
             simply [ answer |> Elmegram.methodFromMessage ] model
-
-
-handle : Telegram.Update -> Model -> Response
-handle newUpdate model =
-    case newUpdate.content of
-        Telegram.MessageUpdate message ->
-            if Elmegram.matchesCommand "start" message || Elmegram.matchesCommand "help" message then
-                simply [ helpMessage model.self message.chat ] model
-
-            else if Elmegram.containsCommand message then
-                simply [ commandNotFoundMessage model.self message ] model
-
-            else
-                let
-                    getXkcd =
-                        fetchRelevantXkcd
-                            message.text
-                            |> Task.attempt
-                                (\result ->
-                                    case result of
-                                        Ok xkcd ->
-                                            SendXkcdMessage message.chat xkcd
-
-                                        Err err ->
-                                            SendMessage message.chat err
-                                )
-                in
-                do [] model getXkcd
-
-        Telegram.InlineQueryUpdate inlineQuery ->
-            let
-                offset =
-                    String.toInt inlineQuery.offset |> Maybe.withDefault 0
-
-                getXkcd =
-                    fetchRelevantXkcdsForQuery
-                        inlineQuery.query
-                        { amount = 10, offset = offset }
-                        |> Task.attempt
-                            (\result ->
-                                case result of
-                                    Ok xkcds ->
-                                        let
-                                            newOffset =
-                                                List.length xkcds |> String.fromInt
-                                        in
-                                        AnswerQuery inlineQuery newOffset xkcds
-
-                                    Err _ ->
-                                        AnswerQuery inlineQuery "" []
-                            )
-            in
-            do [] model getXkcd
-
-        Telegram.CallbackQueryUpdate callbackQuery ->
-            case String.toInt callbackQuery.data of
-                Just id ->
-                    do []
-                        model
-                        (Xkcd.fetchXkcd
-                            id
-                            |> Task.attempt
-                                (\result ->
-                                    case result of
-                                        Ok xkcd ->
-                                            AnswerCallback callbackQuery xkcd
-
-                                        Err _ ->
-                                            AnswerCallbackFail callbackQuery
-                                )
-                        )
-
-                Nothing ->
-                    simply [ answerCallbackFail callbackQuery ] model
 
 
 xkcdHeading : Xkcd.Xkcd -> String
@@ -269,8 +251,8 @@ commandNotFoundMessage self message =
 -- LOGIC
 
 
-fetchRelevantXkcd : String -> Task String Xkcd.Xkcd
-fetchRelevantXkcd query =
+fetchSuitableXkcd : String -> Task String Xkcd.Xkcd
+fetchSuitableXkcd query =
     let
         fetchCurrent =
             Xkcd.fetchCurrentXkcd
@@ -286,7 +268,7 @@ fetchRelevantXkcd query =
                     |> Task.mapError XkcdError.stringFromFetchXkcdError
 
             Nothing ->
-                Xkcd.fetchRelevantIds query
+                Xkcd.fetchRelevantXkcdIds query
                     |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
                     |> Task.andThen
                         (\ids ->
@@ -300,8 +282,8 @@ fetchRelevantXkcd query =
                         )
 
 
-fetchRelevantXkcdsForQuery : String -> { amount : Int, offset : Int } -> Task String (List Xkcd.Xkcd)
-fetchRelevantXkcdsForQuery query { amount, offset } =
+fetchSuitableXkcds : String -> { amount : Int, offset : Int } -> Task String (List Xkcd.Xkcd)
+fetchSuitableXkcds query { amount, offset } =
     let
         fetchLatest =
             Xkcd.fetchLatestXkcdIds { amount = max 0 amount, offset = offset }
@@ -337,7 +319,7 @@ fetchRelevantXkcdsForQuery query { amount, offset } =
 
 fetchRelevantXkcds : Int -> String -> Task String (List Xkcd.Xkcd)
 fetchRelevantXkcds amount query =
-    Xkcd.fetchRelevantIds query
+    Xkcd.fetchRelevantXkcdIds query
         |> Task.mapError XkcdError.stringFromFetchRelevantXkcdError
         |> Task.andThen
             (Xkcd.fetchXkcds
