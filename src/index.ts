@@ -1,5 +1,4 @@
 import Express from 'express';
-import path from 'path';
 import bodyParser from 'body-parser';
 import { setupBot, startPolling, setupWebhook } from '../packages/elmegram.js';
 const Bot = require('./bot.js');
@@ -14,17 +13,7 @@ async function startServer(app: Express.Express) {
     console.log('Development mode, starting to poll.')
     startPolling(unverifiedToken, Bot);
   } else {
-    const { token, handleUpdate } = await setupBot(unverifiedToken, Bot);
-    const hookUrl = getWebhookUrl(token);
-    const webhookUrl = hookUrl.fullUrl;
-    console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
-    await setupWebhook(token, webhookUrl);
-    app.use(`/bot/${token}`, async (req, res, next) => {
-      console.log("\nReceived update:");
-      console.log(req.body);
-      handleUpdate(req.body);
-      res.sendStatus(200);
-    });
+    startWebhook(unverifiedToken, Bot, app);
   }
 
   const listener = app.listen(process.env.PORT, function () {
@@ -36,12 +25,6 @@ async function startServer(app: Express.Express) {
   })
 }
 
-function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } {
-  const domain = process.env.HOST_DOMAIN || "localhost";
-  const baseUrl = `${domain}/bot/`;
-  return { fullUrl: baseUrl + token, censoredUrl: `${baseUrl}<token>` };
-}
-
 export function getToken(): string {
   const tokenName = 'TELEGRAM_TOKEN';
   const unverifiedToken = process.env[tokenName];
@@ -50,4 +33,26 @@ export function getToken(): string {
     throw new Error('Telegram token env var not set.')
   }
   return unverifiedToken;
+}
+
+async function startWebhook(unverifiedToken: string, Bot, app: Express.Router) {
+  const { token, handleUpdate } = await setupBot(unverifiedToken, Bot);
+
+  const hookUrl = getWebhookUrl(token);
+  const webhookUrl = hookUrl.fullUrl;
+  console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
+  await setupWebhook(token, webhookUrl);
+
+  app.use(`/bot/${token}`, async (req, res, next) => {
+    console.log("\nReceived update:");
+    console.log(req.body);
+    handleUpdate(req.body);
+    res.sendStatus(200);
+  });
+}
+
+function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } {
+  const domain = process.env.HOST_DOMAIN || "localhost";
+  const baseUrl = `${domain}/bot/`;
+  return { fullUrl: baseUrl + token, censoredUrl: `${baseUrl}<token>` };
 }
