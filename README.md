@@ -26,7 +26,7 @@ While the build is run automatically on install, you can also run it manually.
 ```bash
 npm run build:prod
 ```
-This will build the bot production. This entails compiling the Elm code and then the TypeScript code. The generated JavaScript code sits in `dist/`.
+This will build the bot for production, which entails compiling the Elm code and then the TypeScript code. The generated JavaScript code sits in `dist/`.
 
 ## Run
 After building the project, it can be run with
@@ -40,7 +40,7 @@ This executes the entry file `dist/index.js`.
 ```bash
 npm run launch:dev
 ```
-This will run the bot from the TypeScript files and disable webhooks, instead using polling. No need for an extra compilation step or setting up the server for webhooks.
+This will run the bot directly from the TypeScript files and disable webhooks, instead using polling. No need for an extra compilation step or setting up the server for webhooks.
 
 ```bash
 npm run launch:prod
