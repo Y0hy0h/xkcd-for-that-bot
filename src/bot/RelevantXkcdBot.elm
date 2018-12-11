@@ -1,5 +1,6 @@
 module RelevantXkcdBot exposing (Model, Msg, init, newUpdateMsg, update)
 
+import Dict exposing (Dict)
 import Elmegram
 import Http
 import Json.Decode as Decode
@@ -17,18 +18,24 @@ type alias Response =
 
 
 type alias Model =
-    { self : Telegram.User }
+    { self : Telegram.User
+    , cacheSingles : Dict String Xkcd.Xkcd
+    , cacheLists : Dict String (List Xkcd.Xkcd)
+    }
 
 
 init : Telegram.User -> Model
 init user =
-    { self = user }
+    { self = user
+    , cacheSingles = Dict.empty
+    , cacheLists = Dict.empty
+    }
 
 
 type Msg
     = NewUpdate Telegram.Update
-    | CacheFetchXkcd (Handler (Result String Xkcd.Xkcd)) (Result String Xkcd.Xkcd)
-    | CacheFetchXkcds (Handler (Result String (List Xkcd.Xkcd))) (Result String (List Xkcd.Xkcd))
+    | CacheFetchXkcd (Handler (Result String Xkcd.Xkcd)) String (Result String Xkcd.Xkcd)
+    | CacheFetchXkcds (Handler (Result String (List Xkcd.Xkcd))) String (Result String (List Xkcd.Xkcd))
 
 
 newUpdateMsg : Telegram.Update -> Msg
@@ -109,11 +116,21 @@ update msg model =
         NewUpdate telegramUpdate ->
             handleUpdate telegramUpdate
 
-        CacheFetchXkcd processResult result ->
-            processResult model result
+        CacheFetchXkcd processResult query result ->
+            case result of
+                Ok xkcd ->
+                    processResult { model | cacheSingles = Dict.insert query xkcd model.cacheSingles } (Ok xkcd)
 
-        CacheFetchXkcds processResult result ->
-            processResult model result
+                Err err ->
+                    processResult model (Err err)
+
+        CacheFetchXkcds processResult query result ->
+            case result of
+                Ok xkcds ->
+                    processResult { model | cacheLists = Dict.insert query xkcds model.cacheLists } (Ok xkcds)
+
+                Err err ->
+                    processResult model (Err err)
 
 
 
@@ -263,12 +280,17 @@ type alias Handler a =
 
 withSuitableXkcd : String -> Model -> Handler (Result String Xkcd.Xkcd) -> Response
 withSuitableXkcd query model processResult =
-    let
-        cmd =
-            fetchSuitableXkcd query
-                |> Task.attempt (CacheFetchXkcd processResult)
-    in
-    do [] model cmd
+    case Dict.get query model.cacheSingles of
+        Just xkcd ->
+            processResult model (Ok xkcd)
+
+        Nothing ->
+            let
+                cmd =
+                    fetchSuitableXkcd query
+                        |> Task.attempt (CacheFetchXkcd processResult query)
+            in
+            do [] model cmd
 
 
 fetchSuitableXkcd : String -> Task String Xkcd.Xkcd
@@ -304,12 +326,17 @@ fetchSuitableXkcd query =
 
 withSuitableXkcds : String -> { amount : Int, offset : Int } -> Model -> Handler (Result String (List Xkcd.Xkcd)) -> Response
 withSuitableXkcds query config model processResult =
-    let
-        cmd =
-            fetchSuitableXkcds query config
-                |> Task.attempt (CacheFetchXkcds processResult)
-    in
-    do [] model cmd
+    case Dict.get query model.cacheLists of
+        Just xkcd ->
+            processResult model (Ok xkcd)
+
+        Nothing ->
+            let
+                cmd =
+                    fetchSuitableXkcds query config
+                        |> Task.attempt (CacheFetchXkcds processResult query)
+            in
+            do [] model cmd
 
 
 fetchSuitableXkcds : String -> { amount : Int, offset : Int } -> Task String (List Xkcd.Xkcd)
