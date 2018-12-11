@@ -10,7 +10,7 @@
     "xhr2": "^0.1.4"
   },
   "scripts": {
-    "build:prod": "npm run clean:build && npm run build:elm:prod && tsc || exit 0",
+    "build:prod": "npm run clean:build && npm run build:elm:prod && tsc",
     "build:dev": "npm run clean:build && npm run build:elm:dev",
     "build:elm:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
     "build:elm:prod": "npm run build:elm:dev -- --optimize",
