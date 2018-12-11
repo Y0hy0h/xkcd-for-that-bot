@@ -1,5 +1,6 @@
 module RelevantXkcdBot exposing (Model, Msg, init, newUpdateMsg, update)
 
+import Dict exposing (Dict)
 import Elmegram
 import Http
 import Json.Decode as Decode
@@ -17,21 +18,24 @@ type alias Response =
 
 
 type alias Model =
-    { self : Telegram.User }
+    { self : Telegram.User
+    , cacheSingles : Dict String Xkcd.Xkcd
+    , cacheLists : Dict String (List Xkcd.Xkcd)
+    }
 
 
 init : Telegram.User -> Model
 init user =
-    { self = user }
+    { self = user
+    , cacheSingles = Dict.empty
+    , cacheLists = Dict.empty
+    }
 
 
 type Msg
     = NewUpdate Telegram.Update
-    | SendMessage Telegram.Chat String
-    | SendXkcdMessage Telegram.Chat Xkcd.Xkcd
-    | AnswerQuery Telegram.InlineQuery String (List Xkcd.Xkcd)
-    | AnswerCallback Telegram.CallbackQuery Xkcd.Xkcd
-    | AnswerCallbackFail Telegram.CallbackQuery
+    | CacheFetchXkcd (Handler (Result String Xkcd.Xkcd)) String (Result String Xkcd.Xkcd)
+    | CacheFetchXkcds (Handler (Result String (List Xkcd.Xkcd))) String (Result String (List Xkcd.Xkcd))
 
 
 newUpdateMsg : Telegram.Update -> Msg
@@ -45,7 +49,6 @@ update msg model =
         handleUpdate : Telegram.Update -> Response
         handleUpdate newUpdate =
             case newUpdate.content of
-                -- Message
                 Telegram.MessageUpdate message ->
                     -- Help Command
                     if Elmegram.matchesCommand "start" message || Elmegram.matchesCommand "help" message then
@@ -57,65 +60,53 @@ update msg model =
                         -- xkcd Query
 
                     else
-                        let
-                            getXkcd =
-                                fetchSuitableXkcd
-                                    message.text
-                                    |> Task.attempt
-                                        (\result ->
-                                            case result of
-                                                Ok xkcd ->
-                                                    SendXkcdMessage message.chat xkcd
+                        withSuitableXkcd
+                            message.text
+                            model
+                            (\mdl result ->
+                                case result of
+                                    Ok xkcd ->
+                                        simply [ answerWithXkcd message.chat xkcd ] mdl
 
-                                                Err err ->
-                                                    SendMessage message.chat err
-                                        )
-                        in
-                        do [] model getXkcd
+                                    Err err ->
+                                        simply [ Elmegram.answer message.chat err ] mdl
+                            )
 
-                -- Inline Query
                 Telegram.InlineQueryUpdate inlineQuery ->
                     let
                         offset =
                             String.toInt inlineQuery.offset |> Maybe.withDefault 0
-
-                        getXkcd =
-                            fetchSuitableXkcds
-                                inlineQuery.query
-                                { amount = 10, offset = offset }
-                                |> Task.attempt
-                                    (\result ->
-                                        case result of
-                                            Ok xkcds ->
-                                                let
-                                                    newOffset =
-                                                        List.length xkcds |> String.fromInt
-                                                in
-                                                AnswerQuery inlineQuery newOffset xkcds
-
-                                            Err _ ->
-                                                AnswerQuery inlineQuery "" []
-                                    )
                     in
-                    do [] model getXkcd
+                    withSuitableXkcds
+                        inlineQuery.query
+                        { amount = 10, offset = offset }
+                        model
+                        (\mdl result ->
+                            case result of
+                                Ok xkcds ->
+                                    let
+                                        newOffset =
+                                            List.length xkcds |> String.fromInt
+                                    in
+                                    simply [ answerInlineQueryWithXkcds inlineQuery newOffset xkcds ] mdl
 
-                -- Callback Query (from inline keyboard button)
+                                Err _ ->
+                                    simply [ answerInlineQueryWithXkcds inlineQuery "" [] ] mdl
+                        )
+
                 Telegram.CallbackQueryUpdate callbackQuery ->
                     case String.toInt callbackQuery.data of
                         Just id ->
-                            do []
+                            withSuitableXkcd
+                                (String.fromInt id)
                                 model
-                                (Xkcd.fetchXkcd
-                                    id
-                                    |> Task.attempt
-                                        (\result ->
-                                            case result of
-                                                Ok xkcd ->
-                                                    AnswerCallback callbackQuery xkcd
+                                (\mdl result ->
+                                    case result of
+                                        Ok xkcd ->
+                                            simply [ answerCallbackWithXkcd callbackQuery xkcd ] mdl
 
-                                                Err _ ->
-                                                    AnswerCallbackFail callbackQuery
-                                        )
+                                        Err _ ->
+                                            simply [ answerCallbackFail callbackQuery ] mdl
                                 )
 
                         Nothing ->
@@ -125,69 +116,39 @@ update msg model =
         NewUpdate telegramUpdate ->
             handleUpdate telegramUpdate
 
-        SendMessage to text ->
-            simply [ Elmegram.answer to text ] model
+        CacheFetchXkcd processResult query result ->
+            case result of
+                Ok xkcd ->
+                    processResult { model | cacheSingles = Dict.insert query xkcd model.cacheSingles } (Ok xkcd)
 
-        AnswerQuery to newOffset xkcds ->
-            let
-                results =
-                    List.map
-                        (\xkcd ->
-                            let
-                                article =
-                                    Elmegram.makeMinimalInlineQueryResultArticle
-                                        { id = String.fromInt <| Xkcd.getId xkcd
-                                        , title = xkcdHeading xkcd
-                                        , message = Elmegram.makeInputMessageFormatted <| xkcdText xkcd
-                                        }
-                            in
-                            { article
-                                | description = Xkcd.getTranscript xkcd
-                                , url = Just <| Telegram.Hide (Xkcd.getComicUrl xkcd)
-                                , thumb_url = Just (Xkcd.getPreviewUrl xkcd)
-                                , reply_markup = Just (xkcdKeyboard xkcd)
-                            }
-                                |> Elmegram.inlineQueryResultFromArticle
-                        )
-                        xkcds
+                Err err ->
+                    processResult model (Err err)
 
-                incompleteInlineQueryAnswer =
-                    Elmegram.makeAnswerInlineQuery to results
+        CacheFetchXkcds processResult query result ->
+            case result of
+                Ok xkcds ->
+                    processResult { model | cacheLists = Dict.insert query xkcds model.cacheLists } (Ok xkcds)
 
-                rawInlineQueryAnswer =
-                    { incompleteInlineQueryAnswer
-                        | next_offset = Just newOffset
-                    }
-            in
-            simply [ rawInlineQueryAnswer |> Elmegram.methodFromInlineQuery ] model
+                Err err ->
+                    processResult model (Err err)
 
-        AnswerCallback to xkcd ->
-            let
-                incompleteAnswer =
-                    Elmegram.makeAnswerCallbackQuery to
 
-                answer =
-                    { incompleteAnswer
-                        | text = Just <| (Xkcd.getMouseOver xkcd |> String.ellipsis 200)
-                        , show_alert = True
-                    }
-            in
-            simply [ answer |> Elmegram.methodFromAnswerCallbackQuery ] model
 
-        AnswerCallbackFail to ->
-            simply [ answerCallbackFail to ] model
+-- xkcd Messages
 
-        SendXkcdMessage to xkcd ->
-            let
-                incompleteAnswer =
-                    Elmegram.makeAnswerFormatted to (xkcdText xkcd)
 
-                answer =
-                    { incompleteAnswer
-                        | reply_markup = Just <| Telegram.InlineKeyboardMarkup (xkcdKeyboard xkcd)
-                    }
-            in
-            simply [ answer |> Elmegram.methodFromMessage ] model
+answerWithXkcd : Telegram.Chat -> Xkcd.Xkcd -> Elmegram.Method
+answerWithXkcd to xkcd =
+    let
+        incompleteAnswer =
+            Elmegram.makeAnswerFormatted to (xkcdText xkcd)
+
+        answer =
+            { incompleteAnswer
+                | reply_markup = Just <| Telegram.InlineKeyboardMarkup (xkcdKeyboard xkcd)
+            }
+    in
+    Elmegram.methodFromMessage answer
 
 
 xkcdHeading : Xkcd.Xkcd -> String
@@ -211,10 +172,72 @@ xkcdKeyboard xkcd =
     ]
 
 
+
+-- Inline Queries
+
+
+answerInlineQueryWithXkcds : Telegram.InlineQuery -> String -> List Xkcd.Xkcd -> Elmegram.Method
+answerInlineQueryWithXkcds to newOffset xkcds =
+    let
+        results =
+            List.map
+                (\xkcd ->
+                    let
+                        article =
+                            Elmegram.makeMinimalInlineQueryResultArticle
+                                { id = String.fromInt <| Xkcd.getId xkcd
+                                , title = xkcdHeading xkcd
+                                , message = Elmegram.makeInputMessageFormatted <| xkcdText xkcd
+                                }
+                    in
+                    { article
+                        | description = Xkcd.getTranscript xkcd
+                        , url = Just <| Telegram.Hide (Xkcd.getComicUrl xkcd)
+                        , thumb_url = Just (Xkcd.getPreviewUrl xkcd)
+                        , reply_markup = Just (xkcdKeyboard xkcd)
+                    }
+                        |> Elmegram.inlineQueryResultFromArticle
+                )
+                xkcds
+
+        incompleteInlineQueryAnswer =
+            Elmegram.makeAnswerInlineQuery to results
+
+        rawInlineQueryAnswer =
+            { incompleteInlineQueryAnswer
+                | next_offset = Just newOffset
+            }
+    in
+    rawInlineQueryAnswer |> Elmegram.methodFromInlineQuery
+
+
+
+-- Callbacks
+
+
+answerCallbackWithXkcd : Telegram.CallbackQuery -> Xkcd.Xkcd -> Elmegram.Method
+answerCallbackWithXkcd to xkcd =
+    let
+        incompleteAnswer =
+            Elmegram.makeAnswerCallbackQuery to
+
+        answer =
+            { incompleteAnswer
+                | text = Just <| (Xkcd.getMouseOver xkcd |> String.ellipsis 200)
+                , show_alert = True
+            }
+    in
+    answer |> Elmegram.methodFromAnswerCallbackQuery
+
+
 answerCallbackFail : Telegram.CallbackQuery -> Elmegram.Method
 answerCallbackFail to =
     Elmegram.makeAnswerCallbackQuery to
         |> Elmegram.methodFromAnswerCallbackQuery
+
+
+
+-- Help Messages
 
 
 helpMessage : Telegram.User -> Telegram.Chat -> Elmegram.Method
@@ -251,6 +274,25 @@ commandNotFoundMessage self message =
 -- LOGIC
 
 
+type alias Handler a =
+    Model -> a -> Response
+
+
+withSuitableXkcd : String -> Model -> Handler (Result String Xkcd.Xkcd) -> Response
+withSuitableXkcd query model processResult =
+    case Dict.get query model.cacheSingles of
+        Just xkcd ->
+            processResult model (Ok xkcd)
+
+        Nothing ->
+            let
+                cmd =
+                    fetchSuitableXkcd query
+                        |> Task.attempt (CacheFetchXkcd processResult query)
+            in
+            do [] model cmd
+
+
 fetchSuitableXkcd : String -> Task String Xkcd.Xkcd
 fetchSuitableXkcd query =
     let
@@ -280,6 +322,21 @@ fetchSuitableXkcd query =
                                 _ ->
                                     Task.fail ("No relevant xkcd for query '" ++ query ++ "'.")
                         )
+
+
+withSuitableXkcds : String -> { amount : Int, offset : Int } -> Model -> Handler (Result String (List Xkcd.Xkcd)) -> Response
+withSuitableXkcds query config model processResult =
+    case Dict.get query model.cacheLists of
+        Just xkcd ->
+            processResult model (Ok xkcd)
+
+        Nothing ->
+            let
+                cmd =
+                    fetchSuitableXkcds query config
+                        |> Task.attempt (CacheFetchXkcds processResult query)
+            in
+            do [] model cmd
 
 
 fetchSuitableXkcds : String -> { amount : Int, offset : Int } -> Task String (List Xkcd.Xkcd)
