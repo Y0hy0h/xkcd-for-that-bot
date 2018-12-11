@@ -32,6 +32,7 @@ type Msg
     | AnswerQuery Telegram.InlineQuery String (List Xkcd.Xkcd)
     | AnswerCallback Telegram.CallbackQuery Xkcd.Xkcd
     | AnswerCallbackFail Telegram.CallbackQuery
+    | CacheFetch (Handler (Result String Xkcd.Xkcd)) (Result String Xkcd.Xkcd)
 
 
 newUpdateMsg : Telegram.Update -> Msg
@@ -189,6 +190,9 @@ update msg model =
             in
             simply [ answer |> Elmegram.methodFromMessage ] model
 
+        CacheFetch processResult result ->
+            processResult model result
+
 
 xkcdHeading : Xkcd.Xkcd -> String
 xkcdHeading xkcd =
@@ -249,6 +253,20 @@ commandNotFoundMessage self message =
 
 
 -- LOGIC
+
+
+type alias Handler a =
+    Model -> a -> Response
+
+
+withSuitableXkcd : String -> Model -> Handler (Result String Xkcd.Xkcd) -> Response
+withSuitableXkcd query model processResult =
+    let
+        cmd =
+            fetchSuitableXkcd query
+                |> Task.attempt (CacheFetch processResult)
+    in
+    do [] model cmd
 
 
 fetchSuitableXkcd : String -> Task String Xkcd.Xkcd
