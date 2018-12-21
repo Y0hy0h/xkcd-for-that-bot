@@ -45,7 +45,7 @@ export function getToken(): string {
   return unverifiedToken;
 }
 
-async function setupWebhook(token: string, bot: Elmegram.CustomBot, app: Express.Router) {
+async function setupWebhook(token: string, bot, app: Express.Router) {
   const hookUrl = getWebhookUrl(token);
   const webhookUrl = hookUrl.fullUrl;
   console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
