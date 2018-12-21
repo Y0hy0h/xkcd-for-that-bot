@@ -1,4 +1,4 @@
-port module Main exposing (Model, Msg, init, newUpdateMsg, update)
+port module Main exposing (bot)
 
 import Dict exposing (Dict)
 import Elmegram
@@ -14,32 +14,6 @@ import Url
 import Xkcd
 import Xkcd.Fetch as Xkcd
 import Xkcd.FetchError as XkcdError
-
-
-main =
-    Elmegram.Custom.botRunner
-        bot
-        { incomingUpdate = incomingUpdatePort
-        , sendMethod = methodPort
-        , console = consolePort
-        }
-
-
-
--- PORTS
-
-
-port consolePort : Elmegram.Custom.ConsolePort msg
-
-
-port methodPort : Elmegram.Custom.SendMethodPort msg
-
-
-port incomingUpdatePort : Elmegram.Custom.IncomingUpdatePort msg
-
-
-
--- BOT
 
 
 bot =
