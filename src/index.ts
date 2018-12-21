@@ -1,28 +1,38 @@
 import Express from 'express';
 import bodyParser from 'body-parser';
-import { setupBot, startPolling, setupWebhook } from '../packages/elmegram.js';
-const Bot = require('./bot.js');
+import * as Path from 'path';
+import * as Elmegram from 'elmegram.js';
 
-startServer(Express())
+startBot(Express())
 
-async function startServer(app: Express.Express) {
-  app.use(bodyParser.json());
-
+async function startBot(app: Express.Express) {
   const unverifiedToken = getToken();
+
   if (process.env.NODE_ENV && process.env.NODE_ENV == 'dev') {
     console.log('Development mode, starting to poll.')
-    startPolling(unverifiedToken, Bot);
+    Elmegram.startPolling(unverifiedToken, Path.resolve(__dirname, "../src/bot/Polling.elm"));
   } else {
-    startWebhook(unverifiedToken, Bot, app);
-  }
+    console.log('Starting bot in production mode.')
 
-  const listener = app.listen(process.env.PORT, function () {
-    let address = listener.address();
-    if (typeof address != 'string') {
-      address = address.address + ":" + address.port;
-    }
-    console.log('Your app is listening at ' + address)
-  })
+    app.use(bodyParser.json());
+
+    const compiled = await Elmegram.BotCompiler.compile(
+      Elmegram.CustomBot,
+      Path.resolve(__dirname, "../src/bot/Custom.elm"),
+      false
+    );
+    const bot = compiled.start(unverifiedToken);
+
+    setupWebhook(unverifiedToken, bot, app);
+
+    const listener = app.listen(process.env.PORT, function () {
+      let address = listener.address();
+      if (typeof address != 'string') {
+        address = address.address + ":" + address.port;
+      }
+      console.log('Your app is listening at ' + address)
+    })
+  }
 }
 
 export function getToken(): string {
@@ -35,18 +45,15 @@ export function getToken(): string {
   return unverifiedToken;
 }
 
-async function startWebhook(unverifiedToken: string, Bot, app: Express.Router) {
-  const { token, handleUpdate } = await setupBot(unverifiedToken, Bot);
-
+async function setupWebhook(token: string, bot: Elmegram.CustomBot, app: Express.Router) {
   const hookUrl = getWebhookUrl(token);
   const webhookUrl = hookUrl.fullUrl;
   console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
-  await setupWebhook(token, webhookUrl);
 
   app.use(`/bot/${token}`, async (req, res, next) => {
     console.log("\nReceived update:");
     console.log(req.body);
-    handleUpdate(req.body);
+    bot.sendUpdates(req.body.result);
     res.sendStatus(200);
   });
 }

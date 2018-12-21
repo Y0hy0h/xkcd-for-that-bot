@@ -10,16 +10,13 @@
     "xhr2": "^0.1.4"
   },
   "scripts": {
-    "build:prod": "npm run clean:build && npm run build:elm:prod && tsc",
-    "build:dev": "npm run build:elm:dev",
-    "build:elm:dev": "elm make ./src/bot/Main.elm --output ./src/bot.js",
-    "build:elm:prod": "npm run build:elm:dev -- --optimize",
+    "build": "npm run clean:build && tsc",
     "clean:build": "rimraf dist/",
-    "postinstall": "npm run install:localDeps && npm run build:prod",
+    "postinstall": "npm run install:localDeps && npm run build",
     "install:localDeps": "cd packages/elmegram.js && npm run build && cd ../..",
     "start": "node ./dist/index.js",
     "start:dev": "cross-env NODE_ENV=dev ts-node ./src/index.ts",
-    "launch:dev": "npm run build:dev && npm run start:dev",
+    "launch:dev": "npm run start:dev",
     "launch:prod": "npm run build:prod && npm run start"
   },
   "repository": {
@@ -39,5 +36,9 @@
     "rimraf": "^2.6.2",
     "ts-node": "^7.0.1",
     "typescript": "^3.1.6"
-  }
+  },
+  "private": true,
+  "workspaces": [
+    "./packages/elmegram.js"
+  ]
 }
