@@ -1,25 +1,17 @@
-module Polling exposing (main)
+port module Polling exposing (main)
 
 import Bot
+import Elmegram.Polling
 
 
 main =
-    Elmegram.Custom.botRunner
+    Elmegram.Polling.botRunner
         Bot.bot
-        { incomingUpdate = incomingUpdatePort
-        , sendMethod = methodPort
-        , console = consolePort
-        }
+        consolePort
 
 
 
 -- PORTS
 
 
-port consolePort : Elmegram.Custom.ConsolePort msg
-
-
-port methodPort : Elmegram.Custom.SendMethodPort msg
-
-
-port incomingUpdatePort : Elmegram.Custom.IncomingUpdatePort msg
+port consolePort : Elmegram.Polling.ConsolePort msg
