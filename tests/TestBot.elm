@@ -1,9 +1,9 @@
-module TestMain exposing (suite)
+module TestBot exposing (suite)
 
+import Bot exposing (bot)
 import Elmegram.Bot as Elmegram
 import Expect exposing (Expectation)
 import Fuzz exposing (..)
-import Main
 import Telegram.Test as TeleTest
 import Test exposing (..)
 
@@ -12,7 +12,7 @@ suite : Test
 suite =
     let
         initModel =
-            Main.init TeleTest.makeUser |> .model
+            bot.init TeleTest.makeUser |> .model
     in
     describe "xkcd for that bot"
         [ test "/help sends help message" <|
@@ -24,7 +24,7 @@ suite =
                     update =
                         TeleTest.send message
                 in
-                Main.update (Main.newUpdateMsg update) initModel
+                bot.update (bot.newUpdateMsg update) initModel
                     |> .methods
                     |> List.any
                         (\method ->
