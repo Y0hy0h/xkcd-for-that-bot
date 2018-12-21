@@ -2,7 +2,8 @@ port module Main exposing (Model, Msg, init, newUpdateMsg, update)
 
 import Dict exposing (Dict)
 import Elmegram
-import Elmegram.Runner
+import Elmegram.Bot as Bot
+import Elmegram.Custom
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -16,13 +17,11 @@ import Xkcd.FetchError as XkcdError
 
 
 main =
-    Elmegram.Runner.bot
-        { init = init
-        , newUpdateMsg = newUpdateMsg
-        , update = update
-        , incomingUpdatePort = incomingUpdatePort
-        , methodPort = methodPort
-        , errorPort = errorPort
+    Elmegram.Custom.botRunner
+        bot
+        { incomingUpdate = incomingUpdatePort
+        , sendMethod = methodPort
+        , console = consolePort
         }
 
 
@@ -30,21 +29,28 @@ main =
 -- PORTS
 
 
-port errorPort : String -> Cmd msg
+port consolePort : Elmegram.Custom.ConsolePort msg
 
 
-port methodPort : Encode.Value -> Cmd msg
+port methodPort : Elmegram.Custom.SendMethodPort msg
 
 
-port incomingUpdatePort : (Encode.Value -> msg) -> Sub msg
+port incomingUpdatePort : Elmegram.Custom.IncomingUpdatePort msg
 
 
 
 -- BOT
 
 
+bot =
+    { init = init
+    , newUpdateMsg = NewUpdate
+    , update = update
+    }
+
+
 type alias Response =
-    Elmegram.Response Model Msg
+    Bot.Response Model Msg
 
 
 type alias Model =
@@ -54,12 +60,13 @@ type alias Model =
     }
 
 
-init : Telegram.User -> Model
+init : Bot.Init Model Msg
 init user =
-    { self = user
-    , cacheSingles = Dict.empty
-    , cacheLists = Dict.empty
-    }
+    keep
+        { self = user
+        , cacheSingles = Dict.empty
+        , cacheLists = Dict.empty
+        }
 
 
 type Msg
@@ -73,7 +80,7 @@ newUpdateMsg =
     NewUpdate
 
 
-update : Msg -> Model -> Response
+update : Bot.Update Model Msg
 update msg model =
     let
         handleUpdate : Telegram.Update -> Response
@@ -99,7 +106,7 @@ update msg model =
                                         simply [ answerWithXkcd message.chat xkcd ] mdl
 
                                     Err err ->
-                                        simply [ Elmegram.answer message.chat err ] mdl
+                                        simply [ Elmegram.makeAnswer message.chat err |> Bot.SendMessageMethod ] mdl
                             )
 
                 Telegram.InlineQueryUpdate inlineQuery ->
@@ -167,7 +174,7 @@ update msg model =
 -- xkcd Messages
 
 
-answerWithXkcd : Telegram.Chat -> Xkcd.Xkcd -> Elmegram.Method
+answerWithXkcd : Telegram.Chat -> Xkcd.Xkcd -> Bot.Method
 answerWithXkcd to xkcd =
     let
         incompleteAnswer =
@@ -178,7 +185,7 @@ answerWithXkcd to xkcd =
                 | reply_markup = Just <| Telegram.InlineKeyboardMarkup (xkcdKeyboard xkcd)
             }
     in
-    Elmegram.methodFromMessage answer
+    Bot.SendMessageMethod answer
 
 
 xkcdHeading : Xkcd.Xkcd -> String
@@ -206,7 +213,7 @@ xkcdKeyboard xkcd =
 -- Inline Queries
 
 
-answerInlineQueryWithXkcds : Telegram.InlineQuery -> String -> List Xkcd.Xkcd -> Elmegram.Method
+answerInlineQueryWithXkcds : Telegram.InlineQuery -> String -> List Xkcd.Xkcd -> Bot.Method
 answerInlineQueryWithXkcds to newOffset xkcds =
     let
         results =
@@ -238,14 +245,14 @@ answerInlineQueryWithXkcds to newOffset xkcds =
                 | next_offset = Just newOffset
             }
     in
-    rawInlineQueryAnswer |> Elmegram.methodFromInlineQuery
+    rawInlineQueryAnswer |> Bot.AnswerInlineQueryMethod
 
 
 
 -- Callbacks
 
 
-answerCallbackWithXkcd : Telegram.CallbackQuery -> Xkcd.Xkcd -> Elmegram.Method
+answerCallbackWithXkcd : Telegram.CallbackQuery -> Xkcd.Xkcd -> Bot.Method
 answerCallbackWithXkcd to xkcd =
     let
         incompleteAnswer =
@@ -257,27 +264,28 @@ answerCallbackWithXkcd to xkcd =
                 , show_alert = True
             }
     in
-    answer |> Elmegram.methodFromAnswerCallbackQuery
+    answer |> Bot.AnswerCallbackQueryMethod
 
 
-answerCallbackFail : Telegram.CallbackQuery -> Elmegram.Method
+answerCallbackFail : Telegram.CallbackQuery -> Bot.Method
 answerCallbackFail to =
     Elmegram.makeAnswerCallbackQuery to
-        |> Elmegram.methodFromAnswerCallbackQuery
+        |> Bot.AnswerCallbackQueryMethod
 
 
 
 -- Help Messages
 
 
-helpMessage : Telegram.User -> Telegram.Chat -> Elmegram.Method
+helpMessage : Telegram.User -> Telegram.Chat -> Bot.Method
 helpMessage self chat =
-    Elmegram.answerFormatted
+    Elmegram.makeAnswerFormatted
         chat
         (Elmegram.format
             Telegram.Markdown
             (helpText self)
         )
+        |> Bot.SendMessageMethod
 
 
 helpText : Telegram.User -> String
@@ -290,14 +298,15 @@ helpText self =
         ++ "You can also just send me messages here. I will answer with the xkcd most relevant to what you sent me."
 
 
-commandNotFoundMessage : Telegram.User -> Telegram.TextMessage -> Elmegram.Method
+commandNotFoundMessage : Telegram.User -> Telegram.TextMessage -> Bot.Method
 commandNotFoundMessage self message =
-    Elmegram.replyFormatted
+    Elmegram.makeReplyFormatted
         message
         (Elmegram.format
             Telegram.Markdown
             ("I did not understand that command.\n\n" ++ helpText self)
         )
+        |> Bot.SendMessageMethod
 
 
 
@@ -419,19 +428,19 @@ fetchRelevantXkcds amount query =
 -- HELPERS
 
 
-do : List Elmegram.Method -> Model -> Cmd Msg -> Response
+do : List Bot.Method -> Model -> Cmd Msg -> Response
 do methods model cmd =
     { methods = methods
     , model = model
-    , command = cmd
+    , cmd = cmd
     }
 
 
-simply : List Elmegram.Method -> Model -> Response
+simply : List Bot.Method -> Model -> Response
 simply methods model =
     { methods = methods
     , model = model
-    , command = Cmd.none
+    , cmd = Cmd.none
     }
 
 
@@ -439,5 +448,5 @@ keep : Model -> Response
 keep model =
     { methods = []
     , model = model
-    , command = Cmd.none
+    , cmd = Cmd.none
     }

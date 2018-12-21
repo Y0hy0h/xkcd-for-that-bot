@@ -1,6 +1,6 @@
 module TestMain exposing (suite)
 
-import Elmegram
+import Elmegram.Bot as Elmegram
 import Expect exposing (Expectation)
 import Fuzz exposing (..)
 import Main
@@ -12,7 +12,7 @@ suite : Test
 suite =
     let
         initModel =
-            Main.init TeleTest.makeUser
+            Main.init TeleTest.makeUser |> .model
     in
     describe "xkcd for that bot"
         [ test "/help sends help message" <|
