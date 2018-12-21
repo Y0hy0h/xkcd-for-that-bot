@@ -1,7 +1,7 @@
 import Express from 'express';
 import bodyParser from 'body-parser';
 import * as Path from 'path';
-import * as Elmegram from '../packages/elmegram.js';
+import * as Elmegram from 'elmegram.js';
 
 startBot(Express())
 
