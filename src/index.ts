@@ -22,6 +22,12 @@ async function startBot(app: Express.Express) {
       false
     );
     const bot = compiled.start(unverifiedToken);
+    bot.onConsole(function (log: { level: string, message: string }) {
+      console[log.level](log.message);
+    });
+    bot.onSendMessage(toSend => {
+      console.log(toSend)
+    })
 
     setupWebhook(unverifiedToken, bot, app);
 
