@@ -59,7 +59,7 @@ async function setupWebhook(token: string, bot, app: Express.Router) {
   app.use(`/bot/${token}`, async (req, res, next) => {
     console.log("\nReceived update:");
     console.log(req.body);
-    bot.sendUpdates(req.body.result);
+    bot.sendUpdates(req.body);
     res.sendStatus(200);
   });
 }
