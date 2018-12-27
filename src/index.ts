@@ -2,6 +2,7 @@ import Express from 'express';
 import bodyParser from 'body-parser';
 import * as Path from 'path';
 import * as Elmegram from 'elmegram.js';
+import Axios from 'axios';
 
 startBot(Express())
 
@@ -26,8 +27,22 @@ async function startBot(app: Express.Express) {
       console[log.level](log.message);
     });
     bot.onSendMessage(toSend => {
-      console.log(toSend)
-    })
+      Axios.post(
+        getMethodUrl(unverifiedToken, toSend.methodName),
+        toSend.content,
+      ).then(() => {
+        console.log(`Successfully sent method ${toSend.methodName} containing:`);
+        console.log(JSON.stringify(toSend.content, undefined, 2));
+      }).catch(error => {
+        console.error(`Error when trying to send method ${toSend.methodName} containing:`);
+        console.error(JSON.stringify(toSend.content, undefined, 2));
+        console.error(error.toString());
+        if (error.response) {
+          console.error('Response contained:');
+          console.error(error.response.data);
+        }
+      });
+    });
 
     setupWebhook(unverifiedToken, bot, app);
 
@@ -57,15 +72,21 @@ async function setupWebhook(token: string, bot, app: Express.Router) {
   console.log(`Starting to listen for webhooks at ${hookUrl.censoredUrl}.`)
 
   app.use(`/bot/${token}`, async (req, res, next) => {
-    console.log("\nReceived update:");
-    console.log(req.body);
     bot.sendUpdates([req.body]);
     res.sendStatus(200);
   });
 }
 
 function getWebhookUrl(token: string): { fullUrl: string, censoredUrl: string } {
+  const rootUrl = getRootUrl();
+  return { fullUrl: `${rootUrl}/token`, censoredUrl: `${rootUrl}/<token>` };
+}
+
+function getRootUrl(): string {
   const domain = process.env.HOST_DOMAIN || "localhost";
-  const baseUrl = `${domain}/bot/`;
-  return { fullUrl: baseUrl + token, censoredUrl: `${baseUrl}<token>` };
+  return `${domain}/bot`;
+}
+
+function getMethodUrl(token: string, method: string): string {
+  return `https://api.telegram.org/bot${token}/${method}`;
 }
