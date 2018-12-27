@@ -12,4 +12,3 @@ deploy:
     branch:
       - master
       - fix-crash
-  skip_cleanup: true
