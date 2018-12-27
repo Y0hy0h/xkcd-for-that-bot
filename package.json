@@ -15,7 +15,7 @@
     "start": "node ./dist/index.js",
     "start:dev": "cross-env NODE_ENV=dev ts-node ./src/index.ts",
     "launch:dev": "npm run start:dev",
-    "launch:prod": "npm run build:prod && npm run start"
+    "launch:prod": "npm run build && npm run start"
   },
   "repository": {
     "type": "git",
