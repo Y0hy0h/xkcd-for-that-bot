@@ -9,6 +9,7 @@ deploy:
   api_key: $HEROKU_API_KEY
   app: xkcd-for-that-bot
   on:
-    - master
-    - fix-crash
+    branch:
+      - master
+      - fix-crash
   skip_cleanup: true
