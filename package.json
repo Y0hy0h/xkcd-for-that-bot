@@ -12,8 +12,8 @@
   "scripts": {
     "build": "npm run clean:build && tsc",
     "clean:build": "rimraf dist/",
-    "postinstall": "npm run install:localDeps && npm run build",
-    "install:localDeps": "cd packages/elmegram.js && npm run build && cd ../..",
+    "postinstall": "npm run build:localDeps && npm run build",
+    "build:localDeps": "yarn workspace elmegram.js build",
     "start": "node ./dist/index.js",
     "start:dev": "cross-env NODE_ENV=dev ts-node ./src/index.ts",
     "launch:dev": "npm run start:dev",
