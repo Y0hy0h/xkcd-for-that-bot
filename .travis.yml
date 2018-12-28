@@ -7,4 +7,3 @@ deploy:
   on:
     branch:
       - master
-      - fix-crash
