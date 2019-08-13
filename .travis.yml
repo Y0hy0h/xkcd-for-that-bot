@@ -1,5 +1,8 @@
 language: elm
 
+script:
+  - elm-format --validate . && elm-test
+
 deploy:
   provider: heroku
   api_key: $HEROKU_API_KEY
