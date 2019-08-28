@@ -534,7 +534,7 @@ binary@^0.3.0:
     buffers "~0.1.1"
     chainsaw "~0.1.0"
 
-binwrap@^0.2.0-rc2:
+binwrap@^0.2.0-rc2, binwrap@^0.2.2:
   version "0.2.2"
   resolved "https://registry.yarnpkg.com/binwrap/-/binwrap-0.2.2.tgz#7d1ea74b28332f18dfdc75548aef993041ffafc9"
   integrity sha512-Y+Wvypk3JhH5GPZAvlwJAWOVH/OsOhQMSj37vySuWHwQivoALplPxfBA8b973rFJI7OS+O+1YmmYXIiEXVMAcw==
@@ -1049,6 +1049,13 @@ ee-first@1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/ee-first/-/ee-first-1.1.1.tgz#590c61156b0ae2f4f0255732a158b266bc56b21d"
   integrity sha1-WQxhFWsK4vTwJVcyoViyZrxWsh0=
+
+elm-format@^0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/elm-format/-/elm-format-0.8.2.tgz#402d32b96014476ccf98ab5c92f4d102f933565f"
+  integrity sha512-BRQaVQOGt9gxK1hqSJn1MISxDGdln22PSYzmHMjqpQY3S9OJY/3kPn5HoiH3bHQYQFwC+X0apsMZldK9VxySow==
+  dependencies:
+    binwrap "^0.2.2"
 
 elm-test@^0.19.0-rev6:
   version "0.19.0-rev6"

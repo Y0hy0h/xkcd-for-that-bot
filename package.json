@@ -34,6 +34,7 @@
     "@types/express": "^4.17.1",
     "@types/node": "^12.7.2",
     "cross-env": "^5.2.0",
+    "elm-format": "^0.8.2",
     "elm-test": "^0.19.0-rev6",
     "rimraf": "^3.0.0",
     "ts-node": "^8.3.0",
