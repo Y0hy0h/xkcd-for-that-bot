@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "Telegram bot for searching for revelant xkcd comics inline.",
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.19.0",
     "body-parser": "^1.18.3",
-    "elm": "^0.19.0",
+    "elm": "^0.19.0-no-deps",
     "express": "^4.16.4",
     "node-fetch": "^2.3.0",
-    "xhr2": "^0.1.4"
+    "xhr2": "^0.2.0"
   },
   "scripts": {
     "build": "npm run clean:build && tsc",
@@ -18,7 +18,8 @@
     "start": "node ./dist/index.js",
     "start:dev": "cross-env NODE_ENV=dev ts-node ./src/index.ts",
     "launch:dev": "npm run start:dev",
-    "launch:prod": "npm run build && npm run start"
+    "launch:prod": "npm run build && npm run start",
+    "test": "elm-format --validate . && elm-test"
   },
   "repository": {
     "type": "git",
@@ -30,12 +31,14 @@
     "url": "https://github.com/Y0hy0h/xkcd-for-that-bot/issues"
   },
   "devDependencies": {
-    "@types/body-parser": "^1.17.0",
-    "@types/express": "^4.16.0",
-    "@types/node": "^10.12.10",
+    "@types/body-parser": "^1.17.1",
+    "@types/express": "^4.17.1",
+    "@types/node": "^12.7.2",
     "cross-env": "^5.2.0",
-    "rimraf": "^2.6.2",
-    "ts-node": "^7.0.1",
+    "elm-format": "^0.8.2",
+    "elm-test": "^0.19.0-rev6",
+    "rimraf": "^3.0.0",
+    "ts-node": "^8.3.0",
     "typescript": "^3.1.6"
   },
   "private": true,
