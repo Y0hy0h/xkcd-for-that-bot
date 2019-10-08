@@ -1,5 +1,6 @@
 # xkcd for that bot
 
+[![Build Status](https://travis-ci.org/Y0hy0h/xkcd-for-that-bot.svg?branch=master)](https://travis-ci.org/Y0hy0h/xkcd-for-that-bot)
 [![Telegram @xkcdForThatBot](https://img.shields.io/badge/Telegram-%40xkcdForThatBot-blue.svg)](https://t.me/xkcdForThatBot)
 
 There's a relevant xkcd-for-that-bot! It helps you find [relevant xkcd] comics in Telegram.
