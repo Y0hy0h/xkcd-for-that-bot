@@ -1,4 +1,4 @@
-port module Bot exposing (bot)
+module Bot exposing (bot)
 
 import Dict exposing (Dict)
 import Elmegram
